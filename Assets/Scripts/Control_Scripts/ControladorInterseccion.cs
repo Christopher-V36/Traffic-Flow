@@ -3,16 +3,16 @@ using System.Collections.Generic;
 
 public class ControladorInterseccion : MonoBehaviour
 {
-    [Header("Configuración")]
-    [Tooltip("Identificador único para esta intersección.")]
+    [Header("Configuraciï¿½n")]
+    [Tooltip("Identificador ï¿½nico para esta intersecciï¿½n.")]
     public int idInterseccion = 1;
 
-    [Tooltip("Arrastra aquí TODOS los waypoints que están DENTRO de esta intersección.")]
+    [Tooltip("Arrastra aquï¿½ TODOS los waypoints que estï¿½n DENTRO de esta intersecciï¿½n.")]
     public List<GameObject> waypointsDeLaInterseccion;
 
-    // --- ¡NUEVA SECCIÓN! ---
+    // --- ï¿½NUEVA SECCIï¿½N! ---
     [Header("Bloqueo Visual")]
-    [Tooltip("Arrastra aquí los conos, barreras, etc., que bloquearán la calle.")]
+    [Tooltip("Arrastra aquï¿½ los conos, barreras, etc., que bloquearï¿½n la calle.")]
     public List<GameObject> objetosDeBloqueo;
     // -------------------------
 
@@ -21,8 +21,8 @@ public class ControladorInterseccion : MonoBehaviour
     // Start se ejecuta una vez al principio del juego.
     void Start()
     {
-        // Al empezar, la intersección está abierta por defecto,
-        // así que nos aseguramos de que todos los objetos de bloqueo estén ocultos.
+        // Al empezar, la intersecciï¿½n estï¿½ abierta por defecto,
+        // asï¿½ que nos aseguramos de que todos los objetos de bloqueo estï¿½n ocultos.
         foreach (GameObject bloqueo in objetosDeBloqueo)
         {
             if (bloqueo != null)
@@ -32,7 +32,7 @@ public class ControladorInterseccion : MonoBehaviour
         }
     }
 
-    // Función para activar o desactivar la intersección.
+    // Funciï¿½n para activar o desactivar la intersecciï¿½n.
     public void SetEstado(bool activar)
     {
         estaActiva = activar;
@@ -47,8 +47,8 @@ public class ControladorInterseccion : MonoBehaviour
         }
 
         // 2. Muestra u oculta los objetos de bloqueo.
-        // Si la intersección se CIERRA (activar = false), los bloqueos se MUESTRAN.
-        // Si la intersección se ABRE (activar = true), los bloqueos se OCULTAN.
+        // Si la intersecciï¿½n se CIERRA (activar = false), los bloqueos se MUESTRAN.
+        // Si la intersecciï¿½n se ABRE (activar = true), los bloqueos se OCULTAN.
         foreach (GameObject bloqueo in objetosDeBloqueo)
         {
             if (bloqueo != null)
@@ -56,6 +56,6 @@ public class ControladorInterseccion : MonoBehaviour
                 bloqueo.SetActive(!estaActiva);
             }
         }
-        Debug.Log($"Intersección {idInterseccion} ahora está {(estaActiva ? "ABIERTA" : "CERRADA")}");
+        Debug.Log($"Intersecciï¿½n {idInterseccion} ahora estï¿½ {(estaActiva ? "ABIERTA" : "CERRADA")}");
     }
 }

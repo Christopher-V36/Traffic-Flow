@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.AI;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -22,26 +23,106 @@ public class ControladorCocheHibrido : MonoBehaviour
     private bool obstaculoAdelante = false;
     public float distanciaDeDeteccion = 3.0f;
 
+    private bool estabaDetenidoAnteriormente = false;
+
+    // --- ¡NUEVO MECANISMO DE SEGURIDAD! ---
+    private Coroutine vigilanteDeAtasco; // Referencia a nuestra corrutina "vigilante"
+
     void Awake()
     {
         agente = GetComponent<NavMeshAgent>();
     }
 
+    void Update()
+    {
+        if (rutaCalculada == null || rutaCalculada.Count == 0 || !agente.isOnNavMesh || indiceRutaActual >= rutaCalculada.Count)
+        {
+            return;
+        }
+
+        ComprobarObstaculos();
+
+        bool debeDetenerse = semaforoEnRojo || obstaculoAdelante;
+
+        if (debeDetenerse)
+        {
+            agente.isStopped = true;
+            estabaDetenidoAnteriormente = true;
+
+            // Si nos detenemos, cancelamos cualquier vigilancia, ya que es una detención legítima.
+            if (vigilanteDeAtasco != null)
+            {
+                StopCoroutine(vigilanteDeAtasco);
+                vigilanteDeAtasco = null;
+            }
+        }
+        else
+        {
+            if (estabaDetenidoAnteriormente)
+            {
+                agente.isStopped = false;
+                WaypointNode objetivoActual = rutaCalculada[indiceRutaActual];
+                agente.SetDestination(objetivoActual.transform.position);
+                estabaDetenidoAnteriormente = false;
+
+                // --- ¡AQUÍ EMPIEZA LA VIGILANCIA! ---
+                // Al darle la orden de moverse, iniciamos el vigilante.
+                if (vigilanteDeAtasco != null) StopCoroutine(vigilanteDeAtasco);
+                vigilanteDeAtasco = StartCoroutine(VigilarSiEstaAtascado());
+            }
+            else if (!agente.pathPending && agente.remainingDistance <= distanciaMinimaAlNodo)
+            {
+                // Si llegamos a un nodo, ya no estamos atascados, así que cancelamos la vigilancia.
+                if (vigilanteDeAtasco != null)
+                {
+                    StopCoroutine(vigilanteDeAtasco);
+                    vigilanteDeAtasco = null;
+                }
+
+                indiceRutaActual++;
+                MoverAlSiguienteNodoDeLaRuta(false);
+            }
+        }
+    }
+
+    // --- ¡NUEVA CORRUTINA VIGILANTE! ---
+    // Esta corrutina revisa si el coche realmente empezó a moverse después de recibir la orden.
+    private IEnumerator VigilarSiEstaAtascado()
+    {
+        // Espera 1.5 segundos para darle tiempo al coche de acelerar.
+        yield return new WaitForSeconds(1.5f);
+
+        // Después de la espera, revisamos dos cosas:
+        // 1. ¿El coche sigue sin moverse (su velocidad es casi cero)?
+        // 2. ¿No hay una razón legítima para que esté parado (un semáforo o un obstáculo)?
+        if (agente.velocity.sqrMagnitude < 0.01f && !semaforoEnRojo && !obstaculoAdelante)
+        {
+            Debug.LogWarning($"¡FALLO DETECTADO! Coche {idCoche} atascado. Forzando avance al siguiente nodo.");
+
+            // Si ambas condiciones son ciertas, el coche está atascado.
+            // Forzamos el avance saltando al siguiente nodo de la ruta.
+            indiceRutaActual++;
+            MoverAlSiguienteNodoDeLaRuta(false);
+        }
+
+        // La vigilancia ha terminado.
+        vigilanteDeAtasco = null;
+    }
+
+
+    // --- El resto de tus funciones permanecen igual ---
+
     public void IniciarViaje(WaypointNode nodoInicial, WaypointNode nodoFinal, int id)
     {
         this.idCoche = id;
         gameObject.name = "Coche_" + id;
-
         if (agente == null) agente = GetComponent<NavMeshAgent>();
         this.destinoFinal = nodoFinal;
-
         if (NavMesh.SamplePosition(transform.position, out NavMeshHit hit, 2.0f, NavMesh.AllAreas))
         {
             transform.position = hit.position;
         }
-
         rutaCalculada = CalcularRutaHaciaDestino(nodoInicial, nodoFinal);
-
         if (rutaCalculada != null && rutaCalculada.Count > 1)
         {
             indiceRutaActual = 1;
@@ -55,10 +136,10 @@ public class ControladorCocheHibrido : MonoBehaviour
 
     public void CambiarDestino(WaypointNode nuevoDestino)
     {
+        if (indiceRutaActual >= rutaCalculada.Count) return;
         WaypointNode nodoDePartida = rutaCalculada[indiceRutaActual];
         this.destinoFinal = nuevoDestino;
         rutaCalculada = CalcularRutaHaciaDestino(nodoDePartida, nuevoDestino);
-
         if (rutaCalculada != null && rutaCalculada.Count > 0)
         {
             indiceRutaActual = 0;
@@ -71,46 +152,6 @@ public class ControladorCocheHibrido : MonoBehaviour
         }
     }
 
-    void Update()
-    {
-        if (rutaCalculada == null || rutaCalculada.Count == 0 || !agente.isOnNavMesh) return;
-
-        ComprobarObstaculos();
-
-        bool debeDetenerse = semaforoEnRojo || obstaculoAdelante;
-
-        // --- ¡LÓGICA DE ESTADO CORREGIDA Y MÁS ROBUSTA! ---
-        // Si el coche debe detenerse, nos aseguramos de que lo esté.
-        if (debeDetenerse)
-        {
-            agente.isStopped = true;
-        }
-        // Si el coche puede moverse...
-        else
-        {
-            agente.isStopped = false;
-
-            // ...SOLO entonces comprobamos si ha llegado a su destino.
-            // Esto evita que el coche piense que ha llegado mientras está parado por un obstáculo.
-            if (!agente.pathPending && agente.remainingDistance <= distanciaMinimaAlNodo)
-            {
-                indiceRutaActual++;
-                MoverAlSiguienteNodoDeLaRuta(false);
-            }
-        }
-
-        // Si nuestra ruta se bloquea, recalculamos.
-        if (indiceRutaActual < rutaCalculada.Count)
-        {
-            WaypointNode objetivoActual = rutaCalculada[indiceRutaActual];
-            if (!objetivoActual.gameObject.activeInHierarchy)
-            {
-                WaypointNode nodoAnterior = rutaCalculada[indiceRutaActual - 1];
-                IniciarViaje(nodoAnterior, destinoFinal, this.idCoche);
-            }
-        }
-    }
-
     void MoverAlSiguienteNodoDeLaRuta(bool esPrimerMovimiento)
     {
         if (indiceRutaActual >= rutaCalculada.Count)
@@ -118,9 +159,7 @@ public class ControladorCocheHibrido : MonoBehaviour
             Destroy(gameObject);
             return;
         }
-
         WaypointNode proximoObjetivo = rutaCalculada[indiceRutaActual];
-
         if (esPrimerMovimiento)
         {
             Vector3 direccion = proximoObjetivo.transform.position - transform.position;
@@ -129,7 +168,6 @@ public class ControladorCocheHibrido : MonoBehaviour
                 transform.rotation = Quaternion.LookRotation(direccion);
             }
         }
-
         agente.SetDestination(proximoObjetivo.transform.position);
     }
 
@@ -139,7 +177,6 @@ public class ControladorCocheHibrido : MonoBehaviour
         frontera.Enqueue(inicio);
         Dictionary<WaypointNode, WaypointNode> vinoDesde = new Dictionary<WaypointNode, WaypointNode>();
         vinoDesde[inicio] = null;
-
         while (frontera.Count > 0)
         {
             WaypointNode actual = frontera.Dequeue();
@@ -155,7 +192,6 @@ public class ControladorCocheHibrido : MonoBehaviour
                 ruta.Reverse();
                 return ruta;
             }
-
             foreach (WaypointNode siguiente in actual.siguientesNodos)
             {
                 if (siguiente != null && siguiente.gameObject.activeInHierarchy && !vinoDesde.ContainsKey(siguiente))

@@ -6,7 +6,8 @@ using System.Linq;
 public class GeneradorDeTrafico : MonoBehaviour
 {
     [Header("Configuración del Spawner")]
-    public GameObject cochePrefab;
+    // Ahora es una lista para que puedas añadir varios modelos de coches.
+    public List<GameObject> cochePrefabs;
     public float intervaloDeGeneracion = 5.0f;
 
     [Header("Red de Waypoints")]
@@ -16,7 +17,7 @@ public class GeneradorDeTrafico : MonoBehaviour
     private List<WaypointNode> nodosDeOrigen = new List<WaypointNode>();
     private List<WaypointNode> nodosDeDestino = new List<WaypointNode>();
 
-    // --- ¡NUEVO CONTADOR DE IDs! ---
+    // Contador estático para asegurar que cada coche tenga un ID único.
     private static int proximoIdCoche = 1;
 
     void Start()
@@ -48,7 +49,12 @@ public class GeneradorDeTrafico : MonoBehaviour
 
     public void GenerarCocheBajoDemanda()
     {
-        if (nodosDeOrigen.Count == 0 || nodosDeDestino.Count == 0) return;
+        // Medida de seguridad para evitar errores.
+        if (cochePrefabs == null || cochePrefabs.Count == 0 || nodosDeOrigen.Count == 0 || nodosDeDestino.Count == 0)
+        {
+            Debug.LogWarning("Faltan prefabs de coches o nodos de origen/destino.");
+            return;
+        }
 
         List<WaypointNode> origenesBarajados = nodosDeOrigen.OrderBy(a => Random.value).ToList();
 
@@ -64,16 +70,20 @@ public class GeneradorDeTrafico : MonoBehaviour
 
                 if (rutaValida != null)
                 {
-                    GameObject nuevoCoche = Instantiate(cochePrefab, origen.transform.position, origen.transform.rotation);
+                    // 1. Elegimos un prefab al azar de nuestra lista.
+                    GameObject prefabAUsar = cochePrefabs[Random.Range(0, cochePrefabs.Count)];
+
+                    // 2. Creamos el coche usando el prefab elegido.
+                    GameObject nuevoCoche = Instantiate(prefabAUsar, origen.transform.position, origen.transform.rotation);
                     ControladorCocheHibrido controlador = nuevoCoche.GetComponent<ControladorCocheHibrido>();
 
                     if (controlador != null)
                     {
-                        // --- ASIGNAMOS EL ID AL COCHE ---
+                        // 3. Le damos su misión con un ID único.
                         controlador.IniciarViaje(origen, destino, proximoIdCoche);
-                        proximoIdCoche++; // Incrementamos el contador para el siguiente coche.
+                        proximoIdCoche++; // Incrementamos el contador para el siguiente.
                     }
-                    return;
+                    return; // Salimos de la función al generar un coche con éxito.
                 }
             }
         }

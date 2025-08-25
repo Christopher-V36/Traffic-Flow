@@ -15,8 +15,9 @@ GameObject:
   - component: {fileID: -946192167139776591}
   - component: {fileID: -6258657555807383483}
   - component: {fileID: -8428229586922391562}
+  - component: {fileID: -7165751827717269923}
   m_Layer: 0
-  m_Name: Vehicle_Pick up Truck_color01
+  m_Name: Vehicle_Pick up Truck_color01 9
   m_TagString: Coche
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -44,7 +45,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5362795930700512455}
-  m_Mesh: {fileID: 4300000, guid: 6780ac7fd67c9ab43aebe63ff3fb60aa, type: 3}
+  m_Mesh: {fileID: 4300000, guid: af2166692e99625489131a7bf2114bd6, type: 3}
 --- !u!23 &9135354092797714583
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -65,7 +66,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 3ec7be87852e30f49a754a666cd49e56, type: 2}
+  - {fileID: 2100000, guid: 992fb1e4bf06a5b488783670728d3f46, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -134,7 +135,7 @@ BoxCollider:
   m_Enabled: 1
   serializedVersion: 3
   m_Size: {x: 3.1007776, y: 2.2749863, z: 5.965742}
-  m_Center: {x: -0.0009114742, y: 1.132328, z: 0.13397205}
+  m_Center: {x: 0, y: 1.132328, z: 0.13397205}
 --- !u!195 &-6258657555807383483
 NavMeshAgent:
   m_ObjectHideFlags: 0
@@ -170,5 +171,17 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   idCoche: 0
-  distanciaMinimaAlNodo: 0.01
+  distanciaMinimaAlNodo: 4
   distanciaDeDeteccion: 15
+--- !u!114 &-7165751827717269923
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5362795930700512455}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6fb4a84a2c9fe154a9c46b0370ce8298, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
