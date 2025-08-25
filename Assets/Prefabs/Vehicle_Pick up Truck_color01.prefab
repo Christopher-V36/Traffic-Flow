@@ -169,5 +169,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0a32ea30f1ee35d4d8cb6604150a6cef, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  distanciaMinimaAlNodo: 2
+  idCoche: 0
+  distanciaMinimaAlNodo: 0.01
   distanciaDeDeteccion: 15

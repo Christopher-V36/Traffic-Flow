@@ -27,7 +27,6 @@ public class ControladorCocheHibrido : MonoBehaviour
         agente = GetComponent<NavMeshAgent>();
     }
 
-    // La función ahora acepta un ID.
     public void IniciarViaje(WaypointNode nodoInicial, WaypointNode nodoFinal, int id)
     {
         this.idCoche = id;
@@ -43,10 +42,10 @@ public class ControladorCocheHibrido : MonoBehaviour
 
         rutaCalculada = CalcularRutaHaciaDestino(nodoInicial, nodoFinal);
 
-        if (rutaCalculada != null && rutaCalculada.Count > 1) // Se necesita al menos un origen y un destino.
+        if (rutaCalculada != null && rutaCalculada.Count > 1)
         {
-            indiceRutaActual = 1; // Nuestro primer objetivo es el SEGUNDO nodo de la ruta.
-            MoverAlSiguienteNodoDeLaRuta(true); // El 'true' indica que es el primer movimiento.
+            indiceRutaActual = 1;
+            MoverAlSiguienteNodoDeLaRuta(true);
         }
         else
         {
@@ -54,28 +53,20 @@ public class ControladorCocheHibrido : MonoBehaviour
         }
     }
 
-    // --- ¡FUNCIÓN CORREGIDA! ---
     public void CambiarDestino(WaypointNode nuevoDestino)
     {
-        // El punto de partida para el nuevo cálculo es el nodo al que nos dirigimos actualmente.
         WaypointNode nodoDePartida = rutaCalculada[indiceRutaActual];
-
-        // Asignamos el nuevo destino final.
         this.destinoFinal = nuevoDestino;
-
-        // Recalculamos la ruta desde nuestro nodo de partida.
         rutaCalculada = CalcularRutaHaciaDestino(nodoDePartida, nuevoDestino);
 
         if (rutaCalculada != null && rutaCalculada.Count > 0)
         {
-            // Reiniciamos el índice y nos movemos al primer nodo de la NUEVA ruta.
             indiceRutaActual = 0;
-            MoverAlSiguienteNodoDeLaRuta(false); // No es el primer movimiento, no necesita reorientación brusca.
+            MoverAlSiguienteNodoDeLaRuta(false);
         }
         else
         {
             Debug.LogWarning($"No se encontró una nueva ruta para el coche {idCoche}. Continuando con la anterior.");
-            // Si no se encuentra ruta, revertimos el destino final al que tenía antes.
             this.destinoFinal = rutaCalculada.Last();
         }
     }
@@ -85,14 +76,30 @@ public class ControladorCocheHibrido : MonoBehaviour
         if (rutaCalculada == null || rutaCalculada.Count == 0 || !agente.isOnNavMesh) return;
 
         ComprobarObstaculos();
-        agente.isStopped = semaforoEnRojo || obstaculoAdelante;
 
-        if (!agente.isStopped && !agente.pathPending && agente.remainingDistance <= distanciaMinimaAlNodo)
+        bool debeDetenerse = semaforoEnRojo || obstaculoAdelante;
+
+        // --- ¡LÓGICA DE ESTADO CORREGIDA Y MÁS ROBUSTA! ---
+        // Si el coche debe detenerse, nos aseguramos de que lo esté.
+        if (debeDetenerse)
         {
-            indiceRutaActual++;
-            MoverAlSiguienteNodoDeLaRuta(false);
+            agente.isStopped = true;
+        }
+        // Si el coche puede moverse...
+        else
+        {
+            agente.isStopped = false;
+
+            // ...SOLO entonces comprobamos si ha llegado a su destino.
+            // Esto evita que el coche piense que ha llegado mientras está parado por un obstáculo.
+            if (!agente.pathPending && agente.remainingDistance <= distanciaMinimaAlNodo)
+            {
+                indiceRutaActual++;
+                MoverAlSiguienteNodoDeLaRuta(false);
+            }
         }
 
+        // Si nuestra ruta se bloquea, recalculamos.
         if (indiceRutaActual < rutaCalculada.Count)
         {
             WaypointNode objetivoActual = rutaCalculada[indiceRutaActual];
@@ -114,8 +121,6 @@ public class ControladorCocheHibrido : MonoBehaviour
 
         WaypointNode proximoObjetivo = rutaCalculada[indiceRutaActual];
 
-        // --- LÓGICA DE ORIENTACIÓN CORREGIDA ---
-        // Solo forzamos la rotación en el primer movimiento para evitar giros bruscos después.
         if (esPrimerMovimiento)
         {
             Vector3 direccion = proximoObjetivo.transform.position - transform.position;
