@@ -6,7 +6,7 @@ using System;
 using TMPro;
 using UnityEngine.UI;
 using System.Collections.Generic;
-using System.Linq; // Necesario para buscar en la lista
+using System.Linq;
 
 public class GestorIA : MonoBehaviour
 {
@@ -20,12 +20,12 @@ public class GestorIA : MonoBehaviour
     [Header("UI References")]
     public TMP_InputField inputField;
     public Button sendButton;
-    // La referencia al botón de dictado ha sido eliminada.
 
     [Header("Objetos de la Simulación")]
     public List<ControladorSemaforo> semaforosControlables;
     public GeneradorDeTrafico generadorDeTrafico;
     public List<ControladorInterseccion> interseccionesControlables;
+    public Transform contenedorDestinos; // Necesitamos esto para encontrar los destinos por ID.
 
     [System.Serializable]
     private class ComandoIA
@@ -34,14 +34,14 @@ public class GestorIA : MonoBehaviour
         public string color;
         public int id_semaforo;
         public int cantidad;
-        public string estado;
         public int id_interseccion;
+        public int id_coche; // ¡NUEVO CAMPO!
+        public int id_destino; // ¡NUEVO CAMPO!
     }
 
     void Start()
     {
         sendButton.onClick.AddListener(ProcesarComandoDeUsuario);
-        // La lógica del botón de dictado ha sido eliminada.
     }
 
     public void ProcesarComandoDeUsuario()
@@ -54,13 +54,13 @@ public class GestorIA : MonoBehaviour
         string promptParaIA = $@"
         Tu rol es ser un controlador de una simulación de tráfico.
         Convierte el siguiente comando de lenguaje natural a un formato JSON.
-        El usuario especificará un 'id_semaforo' o 'id_interseccion'. Debes extraer ese número.
         
         Ejemplos:
         - Usuario: 'pon el semáforo 2 en rojo' -> {{""accion"":""cambiar_semaforo"", ""id_semaforo"":2, ""color"":""rojo""}}
         - Usuario: 'agrega 5 coches' -> {{""accion"":""agregar_coches"", ""cantidad"":5}}
         - Usuario: 'elimina 3 carros' -> {{""accion"":""quitar_coches"", ""cantidad"":3}}
         - Usuario: 'cierra la intersección 1' -> {{""accion"":""cerrar_interseccion"", ""id_interseccion"":1}}
+        - Usuario: 'envía el coche 7 al destino 14' -> {{""accion"":""cambiar_destino_coche"", ""id_coche"":7, ""id_destino"":14}}
 
         Ahora, convierte este comando:
         Usuario: '{comandoUsuario}' ->";
@@ -114,6 +114,7 @@ public class GestorIA : MonoBehaviour
 
         switch (comando.accion)
         {
+            // ... (casos anteriores sin cambios)
             case "cambiar_semaforo":
                 ControladorSemaforo semaforo = semaforosControlables.FirstOrDefault(s => s.idSemaforo == comando.id_semaforo);
                 if (semaforo != null)
@@ -160,6 +161,29 @@ public class GestorIA : MonoBehaviour
                 }
                 SetUIInteractable(true);
                 break;
+
+            // --- ¡NUEVO CASO DE ACCIÓN! ---
+            case "cambiar_destino_coche":
+                // 1. Buscamos el coche por su ID.
+                ControladorCocheHibrido coche = FindObjectsOfType<ControladorCocheHibrido>().FirstOrDefault(c => c.idCoche == comando.id_coche);
+                // 2. Buscamos el nodo de destino por su nombre (ej: "wp (14)").
+                Transform destinoTransform = contenedorDestinos.Find("wp (" + comando.id_destino + ")");
+
+                if (coche != null && destinoTransform != null)
+                {
+                    WaypointNode nuevoDestino = destinoTransform.GetComponent<WaypointNode>();
+                    if (nuevoDestino != null)
+                    {
+                        Debug.Log($"Enviando coche {comando.id_coche} al nuevo destino {nuevoDestino.name}");
+                        coche.CambiarDestino(nuevoDestino);
+                    }
+                }
+                else
+                {
+                    Debug.LogWarning($"No se pudo encontrar el coche {comando.id_coche} o el destino {comando.id_destino}");
+                }
+                SetUIInteractable(true);
+                break;
         }
     }
 
@@ -189,6 +213,5 @@ public class GestorIA : MonoBehaviour
     {
         inputField.interactable = interactable;
         sendButton.interactable = interactable;
-        // La línea del botón de dictado ha sido eliminada.
     }
 }

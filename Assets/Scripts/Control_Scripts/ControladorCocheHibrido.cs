@@ -6,8 +6,10 @@ using System.Linq;
 [RequireComponent(typeof(NavMeshAgent))]
 public class ControladorCocheHibrido : MonoBehaviour
 {
+    [Header("Identificación")]
+    public int idCoche;
+
     [Header("Configuración de Movimiento")]
-    [Tooltip("Qué tan cerca debe estar el coche de un nodo para considerarlo 'alcanzado'.")]
     public float distanciaMinimaAlNodo = 2.5f;
 
     private NavMeshAgent agente;
@@ -25,8 +27,12 @@ public class ControladorCocheHibrido : MonoBehaviour
         agente = GetComponent<NavMeshAgent>();
     }
 
-    public void IniciarViaje(WaypointNode nodoInicial, WaypointNode nodoFinal)
+    // La función ahora acepta un ID.
+    public void IniciarViaje(WaypointNode nodoInicial, WaypointNode nodoFinal, int id)
     {
+        this.idCoche = id;
+        gameObject.name = "Coche_" + id;
+
         if (agente == null) agente = GetComponent<NavMeshAgent>();
         this.destinoFinal = nodoFinal;
 
@@ -37,15 +43,40 @@ public class ControladorCocheHibrido : MonoBehaviour
 
         rutaCalculada = CalcularRutaHaciaDestino(nodoInicial, nodoFinal);
 
-        if (rutaCalculada != null && rutaCalculada.Count > 0)
+        if (rutaCalculada != null && rutaCalculada.Count > 1) // Se necesita al menos un origen y un destino.
         {
-            indiceRutaActual = 0;
-            MoverAlSiguienteNodoDeLaRuta();
+            indiceRutaActual = 1; // Nuestro primer objetivo es el SEGUNDO nodo de la ruta.
+            MoverAlSiguienteNodoDeLaRuta(true); // El 'true' indica que es el primer movimiento.
         }
         else
         {
-            Debug.LogWarning($"No se encontró ruta para el coche {gameObject.name}. Autodestruyendo.");
             Destroy(gameObject);
+        }
+    }
+
+    // --- ¡FUNCIÓN CORREGIDA! ---
+    public void CambiarDestino(WaypointNode nuevoDestino)
+    {
+        // El punto de partida para el nuevo cálculo es el nodo al que nos dirigimos actualmente.
+        WaypointNode nodoDePartida = rutaCalculada[indiceRutaActual];
+
+        // Asignamos el nuevo destino final.
+        this.destinoFinal = nuevoDestino;
+
+        // Recalculamos la ruta desde nuestro nodo de partida.
+        rutaCalculada = CalcularRutaHaciaDestino(nodoDePartida, nuevoDestino);
+
+        if (rutaCalculada != null && rutaCalculada.Count > 0)
+        {
+            // Reiniciamos el índice y nos movemos al primer nodo de la NUEVA ruta.
+            indiceRutaActual = 0;
+            MoverAlSiguienteNodoDeLaRuta(false); // No es el primer movimiento, no necesita reorientación brusca.
+        }
+        else
+        {
+            Debug.LogWarning($"No se encontró una nueva ruta para el coche {idCoche}. Continuando con la anterior.");
+            // Si no se encuentra ruta, revertimos el destino final al que tenía antes.
+            this.destinoFinal = rutaCalculada.Last();
         }
     }
 
@@ -54,13 +85,12 @@ public class ControladorCocheHibrido : MonoBehaviour
         if (rutaCalculada == null || rutaCalculada.Count == 0 || !agente.isOnNavMesh) return;
 
         ComprobarObstaculos();
-
         agente.isStopped = semaforoEnRojo || obstaculoAdelante;
 
         if (!agente.isStopped && !agente.pathPending && agente.remainingDistance <= distanciaMinimaAlNodo)
         {
             indiceRutaActual++;
-            MoverAlSiguienteNodoDeLaRuta();
+            MoverAlSiguienteNodoDeLaRuta(false);
         }
 
         if (indiceRutaActual < rutaCalculada.Count)
@@ -68,14 +98,13 @@ public class ControladorCocheHibrido : MonoBehaviour
             WaypointNode objetivoActual = rutaCalculada[indiceRutaActual];
             if (!objetivoActual.gameObject.activeInHierarchy)
             {
-                Debug.Log($"¡Ruta bloqueada para {gameObject.name}! Recalculando...");
                 WaypointNode nodoAnterior = rutaCalculada[indiceRutaActual - 1];
-                IniciarViaje(nodoAnterior, destinoFinal);
+                IniciarViaje(nodoAnterior, destinoFinal, this.idCoche);
             }
         }
     }
 
-    void MoverAlSiguienteNodoDeLaRuta()
+    void MoverAlSiguienteNodoDeLaRuta(bool esPrimerMovimiento)
     {
         if (indiceRutaActual >= rutaCalculada.Count)
         {
@@ -84,10 +113,21 @@ public class ControladorCocheHibrido : MonoBehaviour
         }
 
         WaypointNode proximoObjetivo = rutaCalculada[indiceRutaActual];
+
+        // --- LÓGICA DE ORIENTACIÓN CORREGIDA ---
+        // Solo forzamos la rotación en el primer movimiento para evitar giros bruscos después.
+        if (esPrimerMovimiento)
+        {
+            Vector3 direccion = proximoObjetivo.transform.position - transform.position;
+            if (direccion != Vector3.zero)
+            {
+                transform.rotation = Quaternion.LookRotation(direccion);
+            }
+        }
+
         agente.SetDestination(proximoObjetivo.transform.position);
     }
 
-    // --- ALGORITMO CORREGIDO Y HECHO PÚBLICO ---
     public static List<WaypointNode> CalcularRutaHaciaDestino(WaypointNode inicio, WaypointNode fin)
     {
         Queue<WaypointNode> frontera = new Queue<WaypointNode>();
@@ -98,7 +138,6 @@ public class ControladorCocheHibrido : MonoBehaviour
         while (frontera.Count > 0)
         {
             WaypointNode actual = frontera.Dequeue();
-
             if (actual == fin)
             {
                 List<WaypointNode> ruta = new List<WaypointNode>();
