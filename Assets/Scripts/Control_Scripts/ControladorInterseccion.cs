@@ -3,26 +3,27 @@ using System.Collections.Generic;
 
 public class ControladorInterseccion : MonoBehaviour
 {
-    [Header("Configuraci�n")]
-    [Tooltip("Identificador �nico para esta intersecci�n.")]
-    public int idInterseccion = 1;
+    [Header("Configuración")]
+    [Tooltip("Identificador único para esta intersección (ej: 'A1', 'E3').")]
+    public string idInterseccion = "A1";
 
-    [Tooltip("Arrastra aqu� TODOS los waypoints que est�n DENTRO de esta intersecci�n.")]
-    public List<GameObject> waypointsDeLaInterseccion;
+    [Tooltip("Arrastra aquí el BoxCollider que define el área de la intersección.")]
+    public BoxCollider zonaDeDeteccion;
 
-    // --- �NUEVA SECCI�N! ---
     [Header("Bloqueo Visual")]
-    [Tooltip("Arrastra aqu� los conos, barreras, etc., que bloquear�n la calle.")]
+    [Tooltip("Arrastra aquí los conos, barreras, etc., que bloquearán la calle.")]
     public List<GameObject> objetosDeBloqueo;
-    // -------------------------
 
+    private List<GameObject> waypointsDeLaInterseccion = new List<GameObject>();
     private bool estaActiva = true;
 
-    // Start se ejecuta una vez al principio del juego.
+    void Awake()
+    {
+        DetectarWaypointsEnLaZona();
+    }
+
     void Start()
     {
-        // Al empezar, la intersecci�n est� abierta por defecto,
-        // as� que nos aseguramos de que todos los objetos de bloqueo est�n ocultos.
         foreach (GameObject bloqueo in objetosDeBloqueo)
         {
             if (bloqueo != null)
@@ -32,12 +33,34 @@ public class ControladorInterseccion : MonoBehaviour
         }
     }
 
-    // Funci�n para activar o desactivar la intersecci�n.
+    void DetectarWaypointsEnLaZona()
+    {
+        if (zonaDeDeteccion == null)
+        {
+            Debug.LogError($"¡Falta asignar la Zona de Detección en la intersección {idInterseccion}!");
+            return;
+        }
+
+        Collider[] collidersEnLaZona = Physics.OverlapBox(
+            zonaDeDeteccion.transform.position + zonaDeDeteccion.center,
+            zonaDeDeteccion.size / 2,
+            zonaDeDeteccion.transform.rotation
+        );
+
+        foreach (Collider col in collidersEnLaZona)
+        {
+            if (col.GetComponent<WaypointNode>() != null)
+            {
+                waypointsDeLaInterseccion.Add(col.gameObject);
+            }
+        }
+    }
+
+    // La función SetEstado vuelve a ser simple, sin la lógica de aviso.
     public void SetEstado(bool activar)
     {
         estaActiva = activar;
 
-        // 1. Activa o desactiva los waypoints.
         foreach (GameObject wp in waypointsDeLaInterseccion)
         {
             if (wp != null)
@@ -46,9 +69,6 @@ public class ControladorInterseccion : MonoBehaviour
             }
         }
 
-        // 2. Muestra u oculta los objetos de bloqueo.
-        // Si la intersecci�n se CIERRA (activar = false), los bloqueos se MUESTRAN.
-        // Si la intersecci�n se ABRE (activar = true), los bloqueos se OCULTAN.
         foreach (GameObject bloqueo in objetosDeBloqueo)
         {
             if (bloqueo != null)
@@ -56,6 +76,6 @@ public class ControladorInterseccion : MonoBehaviour
                 bloqueo.SetActive(!estaActiva);
             }
         }
-        Debug.Log($"Intersecci�n {idInterseccion} ahora est� {(estaActiva ? "ABIERTA" : "CERRADA")}");
+        Debug.Log($"Intersección {idInterseccion} ahora está {(estaActiva ? "ABIERTA" : "CERRADA")}");
     }
 }

@@ -209,7 +209,8 @@ public class ControladorCocheHibrido : MonoBehaviour
         RaycastHit hit;
         if (Physics.Raycast(transform.position, transform.forward, out hit, distanciaDeDeteccion))
         {
-            obstaculoAdelante = hit.collider.CompareTag("Coche");
+            // --- CAMBIO: Ahora detecta otros coches O las barreras ---
+            obstaculoAdelante = hit.collider.CompareTag("Coche") || hit.collider.CompareTag("Barrera");
         }
         else
         {
@@ -234,3 +235,4 @@ public class ControladorCocheHibrido : MonoBehaviour
         }
     }
 }
+

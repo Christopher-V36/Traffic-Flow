@@ -34,7 +34,7 @@ public class GestorIA : MonoBehaviour
         public string color;
         public int cantidad;
         public string id_semaforo;
-        public int id_interseccion;
+        public string id_interseccion;
         public string grupo;
         public int id_coche;
         public int id_destino;
@@ -56,13 +56,12 @@ public class GestorIA : MonoBehaviour
         Tu rol es ser un controlador de una simulación de tráfico.
         Convierte el siguiente comando de lenguaje natural a un formato JSON.
         - Para semáforos, usa 'id_semaforo' (string).
-        - Para abrir/cerrar intersecciones, usa 'id_interseccion' (integer).
-        - Para añadir/quitar coches, usa 'cantidad'.
-        - La acción para remover coches debe ser 'quitar_coches'.
+        - Para abrir/cerrar intersecciones, usa 'id_interseccion' (string).
 
         Ejemplos:
         - Usuario: 'Semaforo B3 horizontal rojo' -> {{""accion"":""cambiar_grupo_semaforo"", ""id_semaforo"":""B3"", ""grupo"":""B"", ""color"":""rojo""}}
-        - Usuario: 'cierra la intersección 2' -> {{""accion"":""cerrar_interseccion"", ""id_interseccion"":2}}
+        - Usuario: 'cierra la intersección E3' -> {{""accion"":""cerrar_interseccion"", ""id_interseccion"":""E3""}}
+        - Usuario: 'abre la intersección A1' -> {{""accion"":""abrir_interseccion"", ""id_interseccion"":""A1""}}
         - Usuario: 'agrega 5 coches' -> {{""accion"":""agregar_coches"", ""cantidad"":5}}
         - Usuario: 'elimina 10 coches' -> {{""accion"":""quitar_coches"", ""cantidad"":10}}
         - Usuario: 'envía el coche 7 al destino 14' -> {{""accion"":""cambiar_destino_coche"", ""id_coche"":7, ""id_destino"":14}}
@@ -98,14 +97,13 @@ public class GestorIA : MonoBehaviour
                 {
                     OllamaGenerateResponse response = JsonUtility.FromJson<OllamaGenerateResponse>(request.downloadHandler.text);
                     string respuestaJson = response.response.Trim();
-                    Debug.Log("Respuesta JSON de la IA: " + respuestaJson);
                     ComandoIA comando = JsonUtility.FromJson<ComandoIA>(respuestaJson);
                     if (comando != null)
                     {
                         EjecutarComando(comando);
                     }
                 }
-                catch (Exception e)
+                catch (System.Exception e)
                 {
                     Debug.LogError("Error al parsear la respuesta JSON de la IA: " + e.Message);
                 }
@@ -121,7 +119,7 @@ public class GestorIA : MonoBehaviour
         switch (comando.accion)
         {
             case "cambiar_grupo_semaforo":
-                InterseccionSemaforizada interseccionSemaforo = interseccionesSemaforizadas.FirstOrDefault(i => i.idInterseccionSemaforo.Equals(comando.id_semaforo, StringComparison.OrdinalIgnoreCase));
+                InterseccionSemaforizada interseccionSemaforo = interseccionesSemaforizadas.FirstOrDefault(i => i.idInterseccionSemaforo.Equals(comando.id_semaforo, System.StringComparison.OrdinalIgnoreCase));
                 if (interseccionSemaforo != null)
                 {
                     interseccionSemaforo.ForzarEstadoGrupo(comando.grupo, comando.color);
@@ -130,7 +128,7 @@ public class GestorIA : MonoBehaviour
 
             case "cerrar_interseccion":
             case "abrir_interseccion":
-                ControladorInterseccion interseccion = interseccionesControlables.Find(i => i.idInterseccion == comando.id_interseccion);
+                ControladorInterseccion interseccion = interseccionesControlables.FirstOrDefault(i => i.idInterseccion.Equals(comando.id_interseccion, System.StringComparison.OrdinalIgnoreCase));
                 if (interseccion != null)
                 {
                     interseccion.SetEstado(comando.accion == "abrir_interseccion");
@@ -144,13 +142,10 @@ public class GestorIA : MonoBehaviour
                 }
                 break;
 
-            // --- SECCIÓN AÑADIDA: Lógica para quitar coches ---
             case "quitar_coches":
-            case "eliminar_coches": // Se añade por si la IA devuelve el sinónimo
-                Debug.Log($"Ejecutando comando: Quitar {comando.cantidad} coche(s).");
+            case "eliminar_coches":
                 QuitarCoches(comando.cantidad);
                 break;
-            // ---------------------------------------------------
 
             case "cambiar_destino_coche":
                 ControladorCocheHibrido coche = FindObjectsOfType<ControladorCocheHibrido>().FirstOrDefault(c => c.idCoche == comando.id_coche);
@@ -176,18 +171,15 @@ public class GestorIA : MonoBehaviour
         }
     }
 
-    // --- FUNCIÓN AÑADIDA: Método para destruir los coches ---
     void QuitarCoches(int cantidad)
     {
         GameObject[] cochesEnEscena = GameObject.FindGameObjectsWithTag("Coche");
-        // Nos aseguramos de no intentar eliminar más coches de los que existen
         int cochesAEliminar = Mathf.Min(cantidad, cochesEnEscena.Length);
         for (int i = 0; i < cochesAEliminar; i++)
         {
             Destroy(cochesEnEscena[i]);
         }
     }
-    // ------------------------------------------------------
 
     private void SetUIInteractable(bool interactable)
     {
