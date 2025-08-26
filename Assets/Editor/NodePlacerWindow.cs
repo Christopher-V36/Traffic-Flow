@@ -6,7 +6,7 @@ public class NodePlacerWindow : EditorWindow
 {
     // Variables para la configuración de la herramienta
     private int numeroDeNodos = 5;
-    private float espaciado = 10.0f;
+    private float espaciado = 30.0f;
     private GameObject nodoPrefab; // Aquí arrastraremos nuestro prefab de WaypointNode
 
     // Lista para guardar los nodos que se acaban de crear
