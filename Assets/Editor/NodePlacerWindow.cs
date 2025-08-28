@@ -1,116 +1,164 @@
 using UnityEngine;
-using UnityEditor; // Necesario para crear herramientas de editor
+using UnityEditor;
 using System.Collections.Generic;
+using UnityEditor.SceneManagement;
 
 public class NodePlacerWindow : EditorWindow
 {
-    // Variables para la configuración de la herramienta
+    // --- NUEVA CLASE INTERNA ---
+    // Para guardar la información de cada fila de forma organizada.
+    private class FilaDeNodos
+    {
+        public List<GameObject> nodos = new List<GameObject>();
+        public bool invertirConexion = false;
+    }
+
+    public enum Direccion
+    {
+        Adelante_Z_Positivo,
+        Atras_Z_Negativo,
+        Derecha_X_Positivo,
+        Izquierda_X_Negativo
+    }
+
+    private Direccion orientacionDeLaFila = Direccion.Derecha_X_Positivo;
+    private Direccion direccionFilasParalelas = Direccion.Adelante_Z_Positivo;
+
     private int numeroDeNodos = 5;
-    private float espaciado = 30.0f;
-    private GameObject nodoPrefab; // Aquí arrastraremos nuestro prefab de WaypointNode
+    private float espaciado = 10.0f;
+    private GameObject nodoPrefab;
+    private int numeroDeFilas = 1;
+    private float espaciadoDeFilas = 10.0f;
 
-    // Lista para guardar los nodos que se acaban de crear
-    private List<GameObject> nodosCreadosRecientemente = new List<GameObject>();
+    // --- CAMBIO: La lista ahora es de nuestra nueva clase ---
+    private List<FilaDeNodos> filasCreadasRecientemente = new List<FilaDeNodos>();
 
-    // Este método crea la opción en el menú superior de Unity
-    [MenuItem("Tools/Colocador de Nodos en Fila")]
+    [MenuItem("Herramientas/Colocador de Nodos en Fila")]
     public static void ShowWindow()
     {
-        // Muestra la ventana de la herramienta
         GetWindow<NodePlacerWindow>("Colocador de Nodos");
     }
 
-    // Este método dibuja la interfaz de la ventana
     void OnGUI()
     {
-        GUILayout.Label("Configuración de Creación", EditorStyles.boldLabel);
-
-        // Campo para asignar el prefab del nodo
+        GUILayout.Label("1. Configuración de Creación", EditorStyles.boldLabel);
         nodoPrefab = (GameObject)EditorGUILayout.ObjectField("Prefab del Nodo", nodoPrefab, typeof(GameObject), false);
-
-        // Campo para definir el número de nodos
-        numeroDeNodos = EditorGUILayout.IntField("Número de Nodos", numeroDeNodos);
-
-        // Campo para definir el espaciado
+        numeroDeFilas = EditorGUILayout.IntField("Número de Filas", numeroDeFilas);
+        if (numeroDeFilas < 1) numeroDeFilas = 1;
+        numeroDeNodos = EditorGUILayout.IntField("Nodos por Fila", numeroDeNodos);
+        if (numeroDeNodos < 1) numeroDeNodos = 1;
         espaciado = EditorGUILayout.FloatField("Espaciado entre Nodos", espaciado);
-
-        // Dibuja un espacio en la interfaz
-        EditorGUILayout.Space();
-
-        // --- Botón 1: Crear la Fila de Nodos ---
-        if (GUILayout.Button("Crear Fila de Nodos"))
+        if (numeroDeFilas > 1)
         {
-            CrearFilaDeNodos();
+            espaciadoDeFilas = EditorGUILayout.FloatField("Espaciado entre Filas", espaciadoDeFilas);
+        }
+
+        orientacionDeLaFila = (Direccion)EditorGUILayout.EnumPopup("Orientación de la Fila", orientacionDeLaFila);
+        if (numeroDeFilas > 1)
+        {
+            direccionFilasParalelas = (Direccion)EditorGUILayout.EnumPopup("Dirección Filas Paralelas", direccionFilasParalelas);
+        }
+
+        if (GUILayout.Button("Crear Filas de Nodos"))
+        {
+            CrearFilasDeNodos();
         }
 
         EditorGUILayout.Space();
-        EditorGUILayout.LabelField("Unir Nodos", EditorStyles.boldLabel);
 
-        // --- Botón 2: Unir los Nodos Creados ---
-        // Se activa solo si hay nodos en nuestra lista para unir
-        if (nodosCreadosRecientemente.Count > 1)
+        // --- CAMBIO: La sección de unión ahora es dinámica ---
+        if (filasCreadasRecientemente.Count > 0)
         {
-            if (GUILayout.Button("Unir Nodos Creados"))
+            GUILayout.Label("2. Configuración de Unión", EditorStyles.boldLabel);
+
+            // Dibujamos una opción para cada fila que hemos creado
+            for (int i = 0; i < filasCreadasRecientemente.Count; i++)
+            {
+                filasCreadasRecientemente[i].invertirConexion = EditorGUILayout.Toggle($"Invertir Conexión Fila {i}", filasCreadasRecientemente[i].invertirConexion);
+            }
+
+            EditorGUILayout.Space();
+
+            if (GUILayout.Button("Unir Nodos de Cada Fila"))
             {
                 UnirNodos();
             }
         }
-        else
-        {
-            EditorGUILayout.HelpBox("Crea una fila de al menos 2 nodos para poder unirlos.", MessageType.Info);
-        }
     }
 
-    void CrearFilaDeNodos()
+    void CrearFilasDeNodos()
     {
         if (nodoPrefab == null)
         {
-            Debug.LogError("¡Error! Por favor, asigna un Prefab de Nodo antes de crear la fila.");
+            Debug.LogError("¡Error! Asigna un Prefab de Nodo.");
             return;
         }
 
-        // Limpiamos la lista de nodos anteriores
-        nodosCreadosRecientemente.Clear();
+        filasCreadasRecientemente.Clear();
+        GameObject conjuntoPadre = new GameObject("Conjunto de Filas de Nodos");
+        Vector3 vectorDireccionNodos = ObtenerVectorDeDireccion(orientacionDeLaFila);
+        Vector3 vectorDireccionFilas = ObtenerVectorDeDireccion(direccionFilasParalelas);
 
-        // Creamos un objeto padre vacío para mantener la jerarquía organizada
-        GameObject filaPadre = new GameObject("Fila de Nodos");
-
-        // Creamos los nodos en una línea recta a lo largo del eje X
-        for (int i = 0; i < numeroDeNodos; i++)
+        for (int j = 0; j < numeroDeFilas; j++)
         {
-            Vector3 posicion = new Vector3(i * espaciado, 0, 0);
-            GameObject nuevoNodo = (GameObject)PrefabUtility.InstantiatePrefab(nodoPrefab);
-            nuevoNodo.transform.position = posicion;
-            nuevoNodo.transform.parent = filaPadre.transform;
-            nuevoNodo.name = $"Nodo_{i}";
+            GameObject filaPadre = new GameObject($"Fila_{j}");
+            filaPadre.transform.parent = conjuntoPadre.transform;
 
-            // Añadimos el nodo recién creado a nuestra lista
-            nodosCreadosRecientemente.Add(nuevoNodo);
+            // Creamos una nueva instancia de nuestra clase para guardar la fila
+            FilaDeNodos nuevaFilaInfo = new FilaDeNodos();
+
+            for (int i = 0; i < numeroDeNodos; i++)
+            {
+                Vector3 posicion = (vectorDireccionNodos * i * espaciado) + (vectorDireccionFilas * j * espaciadoDeFilas);
+                GameObject nuevoNodo = (GameObject)PrefabUtility.InstantiatePrefab(nodoPrefab);
+                nuevoNodo.transform.position = posicion;
+                nuevoNodo.transform.parent = filaPadre.transform;
+                nuevoNodo.name = $"Nodo_{j}-{i}";
+                nuevaFilaInfo.nodos.Add(nuevoNodo);
+            }
+            filasCreadasRecientemente.Add(nuevaFilaInfo);
         }
-
-        Debug.Log($"Se crearon {numeroDeNodos} nodos en una nueva fila.");
+        Debug.Log($"Se crearon {numeroDeFilas} filas con {numeroDeNodos} nodos cada una.");
     }
 
+    // --- CAMBIO: La función ahora lee la opción de inversión de cada fila ---
     void UnirNodos()
     {
-        // Recorremos la lista de nodos creados, excepto el último
-        for (int i = 0; i < nodosCreadosRecientemente.Count - 1; i++)
-        {
-            WaypointNode nodoActual = nodosCreadosRecientemente[i].GetComponent<WaypointNode>();
-            WaypointNode nodoSiguiente = nodosCreadosRecientemente[i + 1].GetComponent<WaypointNode>();
+        if (filasCreadasRecientemente.Count == 0) return;
 
-            if (nodoActual != null && nodoSiguiente != null)
+        foreach (FilaDeNodos filaInfo in filasCreadasRecientemente)
+        {
+            for (int i = 0; i < filaInfo.nodos.Count - 1; i++)
             {
-                // Limpiamos la lista de conexiones anteriores del nodo actual
-                nodoActual.siguientesNodos.Clear();
-                // Añadimos el siguiente nodo de la fila como su única conexión
-                nodoActual.siguientesNodos.Add(nodoSiguiente);
+                // Leemos la opción 'invertirConexion' propia de esta fila
+                bool invertir = filaInfo.invertirConexion;
+
+                WaypointNode nodoOrigen = !invertir ? filaInfo.nodos[i].GetComponent<WaypointNode>() : filaInfo.nodos[i + 1].GetComponent<WaypointNode>();
+                WaypointNode nodoDestino = !invertir ? filaInfo.nodos[i + 1].GetComponent<WaypointNode>() : filaInfo.nodos[i].GetComponent<WaypointNode>();
+
+                if (nodoOrigen != null && nodoDestino != null)
+                {
+                    Undo.RecordObject(nodoOrigen, "Unir Waypoint Nodes");
+                    nodoOrigen.siguientesNodos.Clear();
+                    nodoOrigen.siguientesNodos.Add(nodoDestino);
+                    EditorUtility.SetDirty(nodoOrigen);
+                }
             }
         }
 
-        Debug.Log($"Se unieron {nodosCreadosRecientemente.Count} nodos secuencialmente.");
+        EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
+        Debug.Log($"Se unieron los nodos de {filasCreadasRecientemente.Count} filas. ¡Recuerda guardar la escena (Ctrl+S)!");
+    }
 
-        // Opcional: Limpiar la lista después de unir para evitar volver a unirlos por error
-        // nodosCreadosRecientemente.Clear();
+    private Vector3 ObtenerVectorDeDireccion(Direccion dir)
+    {
+        switch (dir)
+        {
+            case Direccion.Adelante_Z_Positivo: return Vector3.forward;
+            case Direccion.Atras_Z_Negativo: return Vector3.back;
+            case Direccion.Derecha_X_Positivo: return Vector3.right;
+            case Direccion.Izquierda_X_Negativo: return Vector3.left;
+            default: return Vector3.right;
+        }
     }
 }

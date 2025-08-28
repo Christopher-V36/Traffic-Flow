@@ -6,9 +6,13 @@ using System.Linq;
 public class GeneradorDeTrafico : MonoBehaviour
 {
     [Header("Configuración del Spawner")]
-    // Ahora es una lista para que puedas añadir varios modelos de coches.
     public List<GameObject> cochePrefabs;
     public float intervaloDeGeneracion = 5.0f;
+
+    // --- ¡NUEVA SECCIÓN! ---
+    [Header("Límite de Vehículos")]
+    [Tooltip("El número máximo de coches permitidos en la escena. Pon 0 para no tener límite.")]
+    public int maximoDeCoches = 50;
 
     [Header("Red de Waypoints")]
     public Transform contenedorOrigenes;
@@ -17,7 +21,6 @@ public class GeneradorDeTrafico : MonoBehaviour
     private List<WaypointNode> nodosDeOrigen = new List<WaypointNode>();
     private List<WaypointNode> nodosDeDestino = new List<WaypointNode>();
 
-    // Contador estático para asegurar que cada coche tenga un ID único.
     private static int proximoIdCoche = 1;
 
     void Start()
@@ -43,13 +46,39 @@ public class GeneradorDeTrafico : MonoBehaviour
         while (true)
         {
             yield return new WaitForSeconds(intervaloDeGeneracion);
-            GenerarCocheBajoDemanda();
+
+            // --- ¡CAMBIO! ---
+            // Antes de generar un coche, comprobamos si hay espacio.
+            if (!SeHaAlcanzadoElLimite())
+            {
+                GenerarCocheBajoDemanda();
+            }
         }
+    }
+
+    // --- ¡NUEVA FUNCIÓN AUXILIAR! ---
+    // Comprueba si el número actual de coches ha alcanzado el máximo permitido.
+    private bool SeHaAlcanzadoElLimite()
+    {
+        // Si el límite es 0 o menor, consideramos que no hay límite.
+        if (maximoDeCoches <= 0)
+        {
+            return false;
+        }
+        // Contamos los coches actuales y comparamos con el máximo.
+        return GameObject.FindGameObjectsWithTag("Coche").Length >= maximoDeCoches;
     }
 
     public void GenerarCocheBajoDemanda()
     {
-        // Medida de seguridad para evitar errores.
+        // --- ¡CAMBIO! ---
+        // Añadimos una comprobación al inicio de la función.
+        if (SeHaAlcanzadoElLimite())
+        {
+            Debug.LogWarning("Límite máximo de coches alcanzado. No se generarán más vehículos.");
+            return; // Salimos de la función para no generar el coche.
+        }
+
         if (cochePrefabs == null || cochePrefabs.Count == 0 || nodosDeOrigen.Count == 0 || nodosDeDestino.Count == 0)
         {
             Debug.LogWarning("Faltan prefabs de coches o nodos de origen/destino.");
@@ -61,29 +90,22 @@ public class GeneradorDeTrafico : MonoBehaviour
         foreach (WaypointNode origen in origenesBarajados)
         {
             List<WaypointNode> destinosBarajados = nodosDeDestino.OrderBy(a => Random.value).ToList();
-
             foreach (WaypointNode destino in destinosBarajados)
             {
                 if (origen == destino) continue;
 
                 List<WaypointNode> rutaValida = ControladorCocheHibrido.CalcularRutaHaciaDestino(origen, destino);
-
                 if (rutaValida != null)
                 {
-                    // 1. Elegimos un prefab al azar de nuestra lista.
                     GameObject prefabAUsar = cochePrefabs[Random.Range(0, cochePrefabs.Count)];
-
-                    // 2. Creamos el coche usando el prefab elegido.
                     GameObject nuevoCoche = Instantiate(prefabAUsar, origen.transform.position, origen.transform.rotation);
                     ControladorCocheHibrido controlador = nuevoCoche.GetComponent<ControladorCocheHibrido>();
-
                     if (controlador != null)
                     {
-                        // 3. Le damos su misión con un ID único.
                         controlador.IniciarViaje(origen, destino, proximoIdCoche);
-                        proximoIdCoche++; // Incrementamos el contador para el siguiente.
+                        proximoIdCoche++;
                     }
-                    return; // Salimos de la función al generar un coche con éxito.
+                    return;
                 }
             }
         }
