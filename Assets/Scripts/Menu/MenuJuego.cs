@@ -24,7 +24,10 @@ public class MenuJuego : MonoBehaviour
 
     public GameObject cameraAerea;
     public GameObject cameraIso;
-    public GameObject cameraPers;
+    public float step = 10f;
+    private Vector3 initialPosAerea;
+    private Vector3 initialPosIso;
+    /*public GameObject cameraPers;*/
 
     public float zoomSpeed = 5f;
     public float minZoom = 30f;
@@ -34,7 +37,7 @@ public class MenuJuego : MonoBehaviour
 
     private int indiceCancionActual = 0;
     private bool estaSilenciado = false;
-    private bool estaActivo=false;
+    private bool estaActivo = false;
     private bool estaAbierto = false;
 
     void Start()
@@ -51,6 +54,13 @@ public class MenuJuego : MonoBehaviour
 
             ActualizarTextoCancion();
         }
+        initialPosAerea = cameraAerea.GetComponent<Camera>().transform.position;
+        initialPosIso= cameraIso.GetComponent<Camera>().transform.position;
+    }
+
+    private void Update()
+    {
+        ManejarMov();
     }
 
     public void Inicio()
@@ -70,7 +80,7 @@ public class MenuJuego : MonoBehaviour
 
     public void MostrarCam()
     {
-        if (estaActivo==false)
+        if (estaActivo == false)
         {
             panelCam.SetActive(true);
             estaActivo = true;
@@ -190,8 +200,8 @@ public class MenuJuego : MonoBehaviour
     {
         cameraIso.SetActive(false);
         cameraIso.GetComponent<AudioListener>().enabled = false;
-        cameraPers.SetActive(false);
-        cameraPers.GetComponent<AudioListener>().enabled = false;
+        //cameraPers.SetActive(false);
+        //cameraPers.GetComponent<AudioListener>().enabled = false;
         cameraAerea.SetActive(true);
         cameraAerea.GetComponent<AudioListener>().enabled = true;
     }
@@ -200,13 +210,13 @@ public class MenuJuego : MonoBehaviour
     {
         cameraAerea.SetActive(false);
         cameraAerea.GetComponent<AudioListener>().enabled = false;
-        cameraPers.SetActive(false);
-        cameraPers.GetComponent<AudioListener>().enabled = false;
+        //cameraPers.SetActive(false);
+        //cameraPers.GetComponent<AudioListener>().enabled = false;
         cameraIso.SetActive(true);
         cameraIso.GetComponent<AudioListener>().enabled = true;
     }
 
-    public void CamaraPers()
+    /*public void CamaraPers()
     {
         cameraIso.SetActive(false);
         cameraIso.GetComponent<AudioListener>().enabled = false;
@@ -214,7 +224,7 @@ public class MenuJuego : MonoBehaviour
         cameraAerea.GetComponent<AudioListener>().enabled = false;
         cameraPers.SetActive(true);
         cameraPers.GetComponent<AudioListener>().enabled = true;
-    }
+    }*/
     private Camera CamaraActiva()
     {
         if (cameraAerea.activeInHierarchy)
@@ -225,11 +235,11 @@ public class MenuJuego : MonoBehaviour
         {
             return cameraIso.GetComponent<Camera>();
         }
-        if (cameraPers.activeInHierarchy)
+        /*if (cameraPers.activeInHierarchy)
         {
             return cameraPers.GetComponent<Camera>();
-        }
-        return null; 
+        }*/
+        return null;
     }
 
     public void ZoomMas()
@@ -248,5 +258,75 @@ public class MenuJuego : MonoBehaviour
         {
             activeCamera.fieldOfView = Mathf.Min(activeCamera.fieldOfView + zoomSpeed, maxZoom);
         }
+    }
+
+    void ManejarMov()
+    {
+        if (Input.GetKey(KeyCode.RightArrow) || Input.GetKey(KeyCode.D))
+        {
+            Der();
+        }
+        if (Input.GetKey(KeyCode.LeftArrow) || Input.GetKey(KeyCode.A))
+        {
+            Izq();
+        }
+        if (Input.GetKey(KeyCode.UpArrow) || Input.GetKey(KeyCode.W))
+        {
+            Arriba();
+        }
+        if (Input.GetKey(KeyCode.DownArrow) || Input.GetKey(KeyCode.S))
+        {
+            Abajo();
+        }
+        if (Input.GetKeyDown(KeyCode.Space))
+        {
+            Reiniciar();
+        }
+    }
+
+    public void Der()
+    {
+        Camera camActiva = CamaraActiva();
+        Vector3 newPosition = camActiva.transform.position;
+        newPosition.x += step;
+        camActiva.transform.position = newPosition;
+    }
+
+    public void Izq()
+    {
+        Camera camActiva = CamaraActiva();
+        Vector3 newPosition = camActiva.transform.position;
+        newPosition.x -= step;
+        camActiva.transform.position = newPosition;
+    }
+
+    public void Arriba()
+    {
+        Camera camActiva = CamaraActiva();
+        Vector3 newPosition = camActiva.transform.position;
+        newPosition.z += step;
+        camActiva.transform.position = newPosition;
+    }
+
+    public void Abajo()
+    {
+        Camera camActiva = CamaraActiva();
+        Vector3 newPosition = camActiva.transform.position;
+        newPosition.z -= step;
+        camActiva.transform.position = newPosition;
+    }
+
+    public void Reiniciar()
+    {
+        Camera camActiva = CamaraActiva();
+        if (camActiva.gameObject == cameraAerea)
+        {
+            camActiva.transform.position = initialPosAerea;
+        }
+        else if (camActiva.gameObject == cameraIso)
+        {
+            camActiva.transform.position = initialPosIso;
+        }
+        camActiva.fieldOfView = 60f;
     }
 }
