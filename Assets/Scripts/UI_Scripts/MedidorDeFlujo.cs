@@ -1,54 +1,115 @@
 using UnityEngine;
-using TMPro;
+using System.Collections.Generic;
 
 public class MedidorDeFlujo : MonoBehaviour
 {
-    [Header("UI Reference")]
-    [Tooltip("El texto que mostrar� el n�mero de coches en la zona.")]
-    public TextMeshProUGUI textoFlujo;
+    [Header("Identificación")]
+    public string nombreDeLaCalle = "Calle sin nombre";
 
-    // --- L�GICA COMPLETAMENTE NUEVA Y SIMPLIFICADA ---
-    // Un simple contador para llevar la cuenta de los coches.
-    private int cochesDentroDelTrigger = 0;
+    [Header("Congestión Automática")]
+    [Tooltip("Número de coches para que la calle se cierre. Pon 0 para desactivar esta función.")]
+    public int limiteDeCongestion = 5;
+    [Tooltip("Arrastra aquí el BoxCollider que define el área de esta calle.")]
+    public BoxCollider zonaDeLaCalle;
 
-    void Start()
+    // --- ¡NUEVA SECCIÓN! ---
+    [Header("Bloqueo Manual")]
+    [Tooltip("Arrastra aquí los prefabs de barreras y conos que bloquearán la calle.")]
+    public List<GameObject> objetosDeBloqueo;
+
+    public int ConteoActual { get; private set; } = 0;
+
+    private List<GameObject> waypointsDeLaCalle = new List<GameObject>();
+    private bool cerradaPorCongestion = false;
+    // --- ¡NUEVA VARIABLE! ---
+    private bool cerradaManualmente = false;
+
+    private void Awake()
     {
-        // Nos aseguramos de que el contador empiece en 0 al iniciar.
-        ActualizarTexto();
+        DetectarWaypointsEnLaZona();
     }
 
-    // Este m�todo se llama UNA VEZ cuando un objeto ENTRA en el trigger.
+    private void Start()
+    {
+        // Al empezar, nos aseguramos de que los bloqueos manuales estén ocultos.
+        foreach (GameObject bloqueo in objetosDeBloqueo)
+        {
+            if (bloqueo != null) bloqueo.SetActive(false);
+        }
+    }
+
+    private void OnEnable()
+    {
+        GestorDeCongestion.Instance?.RegistrarMedidor(this);
+    }
+
+    private void OnDisable()
+    {
+        GestorDeCongestion.Instance?.DesregistrarMedidor(this);
+    }
+
+    void Update()
+    {
+        // La lógica de congestión solo funciona si la calle no está cerrada manualmente.
+        if (cerradaManualmente || limiteDeCongestion <= 0) return;
+
+        if (ConteoActual >= limiteDeCongestion && !cerradaPorCongestion)
+        {
+            SetEstadoCongestion(false);
+        }
+        else if (ConteoActual < limiteDeCongestion && cerradaPorCongestion)
+        {
+            SetEstadoCongestion(true);
+        }
+    }
+
+    // --- ¡NUEVA FUNCIÓN PÚBLICA PARA LA IA! ---
+    public void SetEstadoManual(bool activar)
+    {
+        cerradaManualmente = !activar;
+        Debug.Log($"La calle '{nombreDeLaCalle}' cambia su estado MANUAL a {(activar ? "ABIERTA" : "CERRADA")}.");
+
+        // Activa/desactiva los waypoints
+        foreach (GameObject wp in waypointsDeLaCalle)
+        {
+            if (wp != null) wp.SetActive(activar);
+        }
+
+        // Muestra/oculta los objetos de bloqueo
+        foreach (GameObject bloqueo in objetosDeBloqueo)
+        {
+            if (bloqueo != null) bloqueo.SetActive(!activar);
+        }
+    }
+
+    // La función de congestión ahora es privada y separada.
+    private void SetEstadoCongestion(bool activar)
+    {
+        cerradaPorCongestion = !activar;
+        Debug.LogWarning($"La calle '{nombreDeLaCalle}' cambia su estado por CONGESTIÓN a {(activar ? "ABIERTA" : "CERRADA")}.");
+
+        foreach (GameObject wp in waypointsDeLaCalle)
+        {
+            if (wp != null) wp.SetActive(activar);
+        }
+    }
+
+    // El resto del script (DetectarWaypoints, OnTrigger, etc.) no cambia.
+    void DetectarWaypointsEnLaZona()
+    {
+        if (zonaDeLaCalle == null) return;
+        Collider[] collidersEnLaZona = Physics.OverlapBox(zonaDeLaCalle.transform.position + zonaDeLaCalle.center, zonaDeLaCalle.size / 2, zonaDeLaCalle.transform.rotation);
+        foreach (Collider col in collidersEnLaZona)
+        {
+            if (col.GetComponent<WaypointNode>() != null) waypointsDeLaCalle.Add(col.gameObject);
+        }
+    }
     private void OnTriggerEnter(Collider other)
     {
-        // Si el objeto que entr� tiene la etiqueta "Coche"...
-        if (other.CompareTag("Coche"))
-        {
-            // ...incrementamos nuestro contador.
-            cochesDentroDelTrigger++;
-            // Actualizamos el texto en la pantalla inmediatamente.
-            ActualizarTexto();
-        }
+        if (other.CompareTag("Coche")) ConteoActual++;
     }
-
-    // Este m�todo se llama UNA VEZ cuando un objeto SALE del trigger.
     private void OnTriggerExit(Collider other)
     {
-        // Si el objeto que sali� tiene la etiqueta "Coche"...
-        if (other.CompareTag("Coche"))
-        {
-            // ...decrementamos nuestro contador.
-            cochesDentroDelTrigger--;
-            // Actualizamos el texto en la pantalla inmediatamente.
-            ActualizarTexto();
-        }
-    }
-
-    // Una funci�n central para actualizar la UI y mantener el c�digo limpio.
-    void ActualizarTexto()
-    {
-        if (textoFlujo != null)
-        {
-            textoFlujo.text = $"Coches en la calle: {cochesDentroDelTrigger}";
-        }
+        if (other.CompareTag("Coche")) ConteoActual--;
     }
 }

@@ -24,14 +24,16 @@ public class MenuJuego : MonoBehaviour
 
     public GameObject cameraAerea;
     public GameObject cameraIso;
-    public float step = 10f;
+    public GameObject cameraIso2;
+    public float step = 0.2f;
     private Vector3 initialPosAerea;
     private Vector3 initialPosIso;
+    private Vector3 initialPosIso2;
     /*public GameObject cameraPers;*/
 
+    public float minZoom = 5f;
+    public float maxZoom = 40f;
     public float zoomSpeed = 5f;
-    public float minZoom = 30f;
-    public float maxZoom = 70f;
 
     public TMPro.TextMeshProUGUI textoNombreCancion;
 
@@ -56,6 +58,7 @@ public class MenuJuego : MonoBehaviour
         }
         initialPosAerea = cameraAerea.GetComponent<Camera>().transform.position;
         initialPosIso= cameraIso.GetComponent<Camera>().transform.position;
+        initialPosIso2= cameraIso2.GetComponent<Camera>().transform.position;
     }
 
     private void Update()
@@ -200,6 +203,8 @@ public class MenuJuego : MonoBehaviour
     {
         cameraIso.SetActive(false);
         cameraIso.GetComponent<AudioListener>().enabled = false;
+        cameraIso2.SetActive(false);
+        cameraIso2.GetComponent<AudioListener>().enabled = false;
         //cameraPers.SetActive(false);
         //cameraPers.GetComponent<AudioListener>().enabled = false;
         cameraAerea.SetActive(true);
@@ -210,12 +215,25 @@ public class MenuJuego : MonoBehaviour
     {
         cameraAerea.SetActive(false);
         cameraAerea.GetComponent<AudioListener>().enabled = false;
+        cameraIso2.SetActive(false);
+        cameraIso2.GetComponent<AudioListener>().enabled = false;
         //cameraPers.SetActive(false);
         //cameraPers.GetComponent<AudioListener>().enabled = false;
         cameraIso.SetActive(true);
         cameraIso.GetComponent<AudioListener>().enabled = true;
     }
 
+    public void CamaraIso2()
+    {
+        cameraAerea.SetActive(false);
+        cameraAerea.GetComponent<AudioListener>().enabled = false;
+        //cameraPers.SetActive(false);
+        //cameraPers.GetComponent<AudioListener>().enabled = false;
+        cameraIso.SetActive(false);
+        cameraIso.GetComponent<AudioListener>().enabled = false;
+        cameraIso2.SetActive(true);
+        cameraIso2.GetComponent<AudioListener>().enabled = true;
+    }
     /*public void CamaraPers()
     {
         cameraIso.SetActive(false);
@@ -235,6 +253,10 @@ public class MenuJuego : MonoBehaviour
         {
             return cameraIso.GetComponent<Camera>();
         }
+        if (cameraIso2.activeInHierarchy)
+        {
+            return cameraIso2.GetComponent<Camera>();
+        }
         /*if (cameraPers.activeInHierarchy)
         {
             return cameraPers.GetComponent<Camera>();
@@ -247,7 +269,7 @@ public class MenuJuego : MonoBehaviour
         Camera activeCamera = CamaraActiva();
         if (activeCamera != null)
         {
-            activeCamera.fieldOfView = Mathf.Max(activeCamera.fieldOfView - zoomSpeed, minZoom);
+            activeCamera.fieldOfView = Mathf.Max(activeCamera.fieldOfView - zoomSpeed, 5f);
         }
     }
 
@@ -256,7 +278,7 @@ public class MenuJuego : MonoBehaviour
         Camera activeCamera = CamaraActiva();
         if (activeCamera != null)
         {
-            activeCamera.fieldOfView = Mathf.Min(activeCamera.fieldOfView + zoomSpeed, maxZoom);
+            activeCamera.fieldOfView = Mathf.Min(activeCamera.fieldOfView+zoomSpeed, 40f);
         }
     }
 
@@ -327,6 +349,6 @@ public class MenuJuego : MonoBehaviour
         {
             camActiva.transform.position = initialPosIso;
         }
-        camActiva.fieldOfView = 60f;
+        camActiva.fieldOfView = 40f;
     }
 }
