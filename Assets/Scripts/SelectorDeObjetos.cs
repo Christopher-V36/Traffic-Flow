@@ -2,7 +2,6 @@ using UnityEngine;
 using TMPro;
 using System.Collections;
 using System.Linq;
-using TMPro.EditorUtilities;
 
 public class SelectorDeObjetos : MonoBehaviour
 {
