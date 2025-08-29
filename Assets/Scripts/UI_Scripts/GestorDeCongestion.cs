@@ -1,87 +1,110 @@
 using UnityEngine;
 using System.Collections.Generic;
-using System.Linq; // Muy importante para poder ordenar las listas
+using System.Linq;
 using TMPro;
 
 public class GestorDeCongestion : MonoBehaviour
 {
-    // --- Singleton Pattern ---
-    // Esto crea una única instancia estática del gestor para que sea fácil
-    // acceder a él desde cualquier otro script (como MedidorDeFlujo).
     public static GestorDeCongestion Instance { get; private set; }
 
-    [Header("Configuración de UI")]
-    [Tooltip("Arrastra aquí el objeto de TextMeshPro que mostrará el ranking.")]
+    [Header("UI Ranking de Calles")]
+    [Tooltip("Arrastra aquí el objeto de TextMeshPro que mostrará el ranking de las 3 calles más ocupadas.")]
     public TextMeshProUGUI textoTopCalles;
 
-    // Lista privada donde se registrarán todos los sensores de las calles.
-    private List<MedidorDeFlujo> medidoresDeFlujo = new List<MedidorDeFlujo>();
+    // --- ¡NUEVA SECCIÓN! ---
+    [Header("UI Nivel de Tráfico Global")]
+    [Tooltip("Arrastra aquí el objeto de TextMeshPro que mostrará el nivel de tráfico promedio.")]
+    public TextMeshProUGUI textoNivelDeTraficoGlobal;
 
-    // Temporizador para no actualizar la UI en cada frame, optimizando el rendimiento.
+    [Tooltip("Número total de coches para que el tráfico se considere 'Ligero' o inferior.")]
+    public int umbralTraficoLigero = 30;
+    [Tooltip("Número total de coches para que el tráfico se considere 'Medio' o inferior.")]
+    public int umbralTraficoMedio = 70;
+    // Nota: Cualquier valor por encima de 'umbralTraficoMedio' se considerará 'Alto'.
+
+    private List<MedidorDeFlujo> medidoresDeFlujo = new List<MedidorDeFlujo>();
     private float tiempoParaActualizar = 1.0f;
     private float temporizador;
 
     private void Awake()
     {
-        // Configuración del Singleton
-        if (Instance != null && Instance != this)
-        {
-            Destroy(gameObject);
-        }
-        else
-        {
-            Instance = this;
-        }
+        if (Instance != null && Instance != this) Destroy(gameObject);
+        else Instance = this;
     }
 
-    // Métodos para que los sensores se registren y se den de baja.
     public void RegistrarMedidor(MedidorDeFlujo medidor)
     {
-        if (!medidoresDeFlujo.Contains(medidor))
-        {
-            medidoresDeFlujo.Add(medidor);
-        }
+        if (!medidoresDeFlujo.Contains(medidor)) medidoresDeFlujo.Add(medidor);
     }
 
     public void DesregistrarMedidor(MedidorDeFlujo medidor)
     {
-        if (medidoresDeFlujo.Contains(medidor))
-        {
-            medidoresDeFlujo.Remove(medidor);
-        }
+        if (medidoresDeFlujo.Contains(medidor)) medidoresDeFlujo.Remove(medidor);
     }
 
     void Update()
     {
-        // Usamos un temporizador para actualizar el ranking solo una vez por segundo.
         temporizador -= Time.deltaTime;
         if (temporizador <= 0f)
         {
             temporizador = tiempoParaActualizar;
             ActualizarRanking();
+
+            // --- ¡NUEVO! ---
+            // Llamamos a la nueva función para medir el tráfico global.
+            ActualizarNivelDeTraficoGlobal();
         }
+    }
+
+    // --- ¡NUEVA FUNCIÓN! ---
+    // Calcula el total de coches y actualiza la UI con el nivel de tráfico.
+    void ActualizarNivelDeTraficoGlobal()
+    {
+        if (textoNivelDeTraficoGlobal == null || medidoresDeFlujo.Count == 0) return;
+
+        // 1. Suma los coches de todos los sensores registrados.
+        int totalCochesEnCalles = 0;
+        foreach (var medidor in medidoresDeFlujo)
+        {
+            totalCochesEnCalles += medidor.ConteoActual;
+        }
+
+        // 2. Determina el nivel de tráfico y el color asociado.
+        string nivelDeTrafico = "";
+        Color colorDeTrafico = Color.white;
+
+        if (totalCochesEnCalles <= umbralTraficoLigero)
+        {
+            nivelDeTrafico = "Ligero";
+            colorDeTrafico = Color.green;
+        }
+        else if (totalCochesEnCalles <= umbralTraficoMedio)
+        {
+            nivelDeTrafico = "Medio";
+            colorDeTrafico = Color.yellow;
+        }
+        else
+        {
+            nivelDeTrafico = "Alto";
+            colorDeTrafico = Color.red;
+        }
+
+        // 3. Actualiza el texto de la UI usando rich text para el color.
+        textoNivelDeTraficoGlobal.text = $"<color=#{ColorUtility.ToHtmlStringRGB(colorDeTrafico)}>{nivelDeTrafico}</color>";
     }
 
     void ActualizarRanking()
     {
         if (textoTopCalles == null || medidoresDeFlujo.Count == 0) return;
 
-        // --- La Magia del Ranking ---
-        // 1. Ordena la lista de medidores de mayor a menor según su conteo de coches.
-        // 2. Toma solo los 3 primeros elementos de la lista ordenada.
         var top3Calles = medidoresDeFlujo.OrderByDescending(medidor => medidor.ConteoActual).Take(3);
-
-        // 3. Construye el texto para mostrarlo en la UI.
         System.Text.StringBuilder sb = new System.Text.StringBuilder();
-        sb.AppendLine("--- Calles más Ocupadas ---");
         int i = 1;
         foreach (var medidor in top3Calles)
         {
-            sb.AppendLine($"{i}. {medidor.nombreDeLaCalle}: <b>{medidor.ConteoActual}</b>");
+            sb.AppendLine($"{i}. {medidor.nombreDeLaCalle}: <b>({medidor.ConteoActual})</b>");
             i++;
         }
-
-        // 4. Actualiza el texto en la pantalla.
         textoTopCalles.text = sb.ToString();
     }
 }

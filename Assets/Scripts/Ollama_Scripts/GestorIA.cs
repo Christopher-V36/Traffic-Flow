@@ -17,6 +17,10 @@ public class GestorIA : MonoBehaviour
     public float temperature = 0.2f;
     public int maxTokens = 100;
 
+    [Header("Configuración de Comandos")]
+    [Tooltip("El tiempo de espera en segundos entre la generación de cada coche al pedir una cantidad.")]
+    public float intervaloEntreCochesAgregados = 2.0f;
+
     [Header("UI References")]
     public TMP_InputField inputField;
     public Image fondo;
@@ -27,7 +31,7 @@ public class GestorIA : MonoBehaviour
     public List<InterseccionSemaforizada> interseccionesSemaforizadas;
     public GeneradorDeTrafico generadorDeTrafico;
     public List<ControladorInterseccion> interseccionesControlables;
-    public List<MedidorDeFlujo> callesControlables; // <--- FUSIONADO
+    public List<MedidorDeFlujo> callesControlables;
     public Transform contenedorDestinos;
     public RobotController robotController;
     public RobotAnimator robotAnimator;
@@ -39,11 +43,12 @@ public class GestorIA : MonoBehaviour
         public string color;
         public int cantidad;
         public string id_semaforo;
-        public string id_interseccion; // <--- FUSIONADO (Cambiado a string)
-        public string nombre_calle;   // <--- FUSIONADO
+        public string id_interseccion;
+        public string nombre_calle;
+        public string nivel_trafico;
         public string grupo;
         public int id_coche;
-        public int id_destino;
+        public string nombre_destino;
         public string mensaje;
     }
 
@@ -103,20 +108,28 @@ public class GestorIA : MonoBehaviour
         if (string.IsNullOrWhiteSpace(comandoUsuario)) return;
         SetUIInteractable(false);
 
-        // --- PROMPT FUSIONADO ---
         string promptParaIA = $@"
-        Tu rol es un controlador de una simulación de tráfico.
+        Tu rol es ser un controlador de una simulación de tráfico.
         SIEMPRE debes convertir el siguiente comando a un formato JSON. No respondas con texto libre.
+
+        INSTRUCCIÓN IMPORTANTE: Si el nombre de una calle, intersección o semáforo es un código de letras y números que vienen espaciados (ej: 'H A 2', 'V F 3'), SIEMPRE debes unirlo en una sola palabra sin espacios (ej: 'HA2', 'VF3').
+
+        - Para cambiar el nivel de tráfico, usa la acción 'ajustar_trafico' y el campo 'nivel_trafico' con los valores 'ligero', 'medio', o 'alto'.
         - Para semáforos, usa 'id_semaforo' (string).
         - Para abrir/cerrar intersecciones, usa 'id_interseccion' (string).
         - Para abrir/cerrar calles, usa 'nombre_calle' (string).
+        - Para comandos globales, usa acciones como 'abrir_todas_calles', 'cerrar_todas_intersecciones', etc.
         - Para que el robot hable, usa la acción 'mostrar_mensaje_robot' y el campo 'mensaje'.
         - Para comandos no reconocidos, usa la acción 'no_valido'.
 
         Ejemplos:
-        - Usuario: 'Semaforo B3 horizontal rojo' -> {{""accion"":""cambiar_grupo_semaforo"", ""id_semaforo"":""B3"", ""grupo"":""B"", ""color"":""rojo""}}
-        - Usuario: 'cierra la intersección E3' -> {{""accion"":""cerrar_interseccion"", ""id_interseccion"":""E3""}}
-        - Usuario: 'abre la calle Avenida Principal' -> {{""accion"":""abrir_calle"", ""nombre_calle"":""Avenida Principal""}}
+        - Usuario: 'cierra la calle H A 2' -> {{""accion"":""cerrar_calle"", ""nombre_calle"":""HA2""}}
+        - Usuario: 'abre la intersección V F 3' -> {{""accion"":""abrir_interseccion"", ""id_interseccion"":""VF3""}}
+        - Usuario: 'abre todas las calles' -> {{""accion"":""abrir_todas_calles""}}
+        - Usuario: 'cierra todas las intersecciones' -> {{""accion"":""cerrar_todas_intersecciones""}}
+        - Usuario: 'semaforo b dos horizontal rojo' -> {{""accion"":""cambiar_grupo_semaforo"", ""id_semaforo"":""B2"", ""grupo"":""B"", ""color"":""rojo""}}
+        - Usuario: 'pon el tráfico en modo ligero' -> {{""accion"":""ajustar_trafico"", ""nivel_trafico"":""ligero""}}
+        - Usuario: 'envía el coche 2 al estadio' -> {{""accion"":""enviar_coche_a_destino"", ""id_coche"":2, ""nombre_destino"":""estadio""}}
         - Usuario: 'agrega 5 coches' -> {{""accion"":""agregar_coches"", ""cantidad"":5}}
         - Usuario: 'hola' -> {{""accion"":""mostrar_mensaje_robot"", ""mensaje"":""¡Hola! ¿En qué puedo ayudarte?""}}
         - Usuario: 'gracias' -> {{""accion"":""mostrar_mensaje_robot"", ""mensaje"":""¡De nada! ¡Estoy a tu disposición!""}}
@@ -140,7 +153,6 @@ public class GestorIA : MonoBehaviour
             request.uploadHandler = new UploadHandlerRaw(bodyRaw);
             request.downloadHandler = new DownloadHandlerBuffer();
             request.SetRequestHeader("Content-Type", "application/json");
-
             yield return request.SendWebRequest();
 
             if (request.result != UnityWebRequest.Result.Success)
@@ -155,7 +167,6 @@ public class GestorIA : MonoBehaviour
                     string rawResponse = request.downloadHandler.text;
                     string finalResponseJson = "";
                     string[] jsonLines = rawResponse.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
-
                     foreach (string line in jsonLines)
                     {
                         OllamaGenerateResponse responsePart = JsonUtility.FromJson<OllamaGenerateResponse>(line);
@@ -168,7 +179,6 @@ public class GestorIA : MonoBehaviour
                     finalResponseJson = finalResponseJson.Replace("```json", "").Replace("```", "").Trim();
                     Debug.Log("Respuesta JSON limpia de la IA: " + finalResponseJson);
                     ComandoIA comando = JsonUtility.FromJson<ComandoIA>(finalResponseJson);
-
                     if (comando != null)
                     {
                         EjecutarComando(comando);
@@ -199,6 +209,93 @@ public class GestorIA : MonoBehaviour
 
         switch (comando.accion)
         {
+            case "abrir_todas_intersecciones":
+                foreach (var inter in interseccionesControlables)
+                {
+                    inter.SetEstado(true);
+                }
+                MostrarEstado("¡Entendido! Abriendo todas las intersecciones.");
+                ActivarAnimacionRobot();
+                break;
+
+            case "cerrar_todas_intersecciones":
+                foreach (var inter in interseccionesControlables)
+                {
+                    inter.SetEstado(false);
+                }
+                MostrarEstado("¡A la orden! Cerrando todas las intersecciones.");
+                ActivarAnimacionRobot();
+                break;
+
+            case "abrir_todas_calles":
+                foreach (var c in callesControlables)
+                {
+                    c.SetEstadoManual(true);
+                }
+                MostrarEstado("¡Claro! Abriendo todas las calles.");
+                ActivarAnimacionRobot();
+                break;
+
+            case "cerrar_todas_calles":
+                foreach (var c in callesControlables)
+                {
+                    c.SetEstadoManual(false);
+                }
+                MostrarEstado("¡Hecho! Cerrando todas las calles.");
+                ActivarAnimacionRobot();
+                break;
+
+            case "enviar_coche_a_destino":
+                ControladorCocheHibrido coche = null;
+                if (SelectorDeObjetos.CocheSeleccionado != null)
+                {
+                    coche = SelectorDeObjetos.CocheSeleccionado;
+                }
+                else if (comando.id_coche > 0)
+                {
+                    coche = FindObjectsOfType<ControladorCocheHibrido>().FirstOrDefault(c => c.idCoche == comando.id_coche);
+                }
+
+                WaypointNode nuevoDestino = null;
+                if (contenedorDestinos != null)
+                {
+                    nuevoDestino = contenedorDestinos.GetComponentsInChildren<WaypointNode>()
+                                     .FirstOrDefault(wp => wp.tipoDeNodo == WaypointNode.TipoDeNodo.Destino &&
+                                                            wp.nombreDestino.Equals(comando.nombre_destino, StringComparison.OrdinalIgnoreCase));
+                }
+
+                if (coche != null && nuevoDestino != null)
+                {
+                    coche.CambiarDestino(nuevoDestino);
+                    MostrarEstado($"¡A la orden! Coche {coche.idCoche} ahora se dirige a '{comando.nombre_destino}'.");
+                    ActivarAnimacionRobot();
+                }
+                else
+                {
+                    if (coche == null) MostrarEstado("No se encontró ningún coche. Por favor, selecciona uno o especifica un ID válido.");
+                    else if (nuevoDestino == null) MostrarEstado($"Lo siento, no pude encontrar un destino llamado '{comando.nombre_destino}'.");
+                    ActivarAnimacionRobot(triste: true);
+                }
+                break;
+
+            case "ajustar_trafico":
+                if (generadorDeTrafico != null)
+                {
+                    string respuesta = generadorDeTrafico.AjustarNivelDeTrafico(comando.nivel_trafico);
+                    MostrarEstado(respuesta);
+                    ActivarAnimacionRobot();
+                }
+                break;
+
+            case "agregar_coches":
+                if (generadorDeTrafico != null)
+                {
+                    generadorDeTrafico.IniciarGeneracionDeLote(comando.cantidad, intervaloEntreCochesAgregados);
+                    MostrarEstado($"¡Excelente! Poniendo en cola la generación de {comando.cantidad} coches.");
+                    ActivarAnimacionRobot();
+                }
+                break;
+
             case "cambiar_grupo_semaforo":
                 InterseccionSemaforizada interseccionSemaforo = interseccionesSemaforizadas.FirstOrDefault(i => i.idInterseccionSemaforo.Equals(comando.id_semaforo, StringComparison.OrdinalIgnoreCase));
                 if (interseccionSemaforo != null)
@@ -231,7 +328,6 @@ public class GestorIA : MonoBehaviour
                 }
                 break;
 
-            // --- CASE FUSIONADO ---
             case "cerrar_calle":
             case "abrir_calle":
                 MedidorDeFlujo calle = callesControlables.FirstOrDefault(c => c.nombreDeLaCalle.Equals(comando.nombre_calle, StringComparison.OrdinalIgnoreCase));
@@ -249,31 +345,24 @@ public class GestorIA : MonoBehaviour
                 }
                 break;
 
-            case "agregar_coches":
-                StartCoroutine(GenerarCochesConRetraso(comando.cantidad));
-                MostrarEstado($"¡Excelente! Agregando {comando.cantidad} coches. ¡Que comience el caos!");
-                ActivarAnimacionRobot();
-                break;
-
             case "quitar_coches":
             case "eliminar_coches":
                 int cochesEliminados = QuitarCoches(comando.cantidad);
-                MostrarEstado($"¡Hecho! Eliminé {cochesEliminados} coche(s). ¡El camino está más despejado!");
+                MostrarEstado($"¡Hecho! Eliminé {cochesEliminados} coche(s).");
                 ActivarAnimacionRobot();
                 break;
 
-            case "cambiar_destino_coche":
-                ControladorCocheHibrido coche = FindObjectsOfType<ControladorCocheHibrido>().FirstOrDefault(c => c.idCoche == comando.id_coche);
-                Transform destinoTransform = contenedorDestinos.Find("wp (" + comando.id_destino + ")");
-                if (coche != null && destinoTransform != null)
+            case "eliminar_coche": // Antes decía "eliminar_coche_por_id"
+                ControladorCocheHibrido cocheAEliminar = FindObjectsOfType<ControladorCocheHibrido>().FirstOrDefault(c => c.idCoche == comando.id_coche);
+                if (cocheAEliminar != null)
                 {
-                    coche.CambiarDestino(destinoTransform.GetComponent<WaypointNode>());
-                    MostrarEstado($"El coche {comando.id_coche} ahora se dirige al destino {comando.id_destino}.");
+                    Destroy(cocheAEliminar.gameObject);
+                    MostrarEstado($"¡Hecho! Eliminé el coche con ID {comando.id_coche}.");
                     ActivarAnimacionRobot();
                 }
                 else
                 {
-                    MostrarEstado("Fallo: No se encontró el coche o el destino especificado.");
+                    MostrarEstado($"Lo siento, no pude encontrar el coche con ID {comando.id_coche}.");
                     ActivarAnimacionRobot(triste: true);
                 }
                 break;
@@ -285,18 +374,9 @@ public class GestorIA : MonoBehaviour
                 break;
 
             case "no_valido":
-                MostrarEstado("¡Lo siento! No entendí tu comando. Intenta con una instrucción más específica.");
+                MostrarEstado("¡Lo siento! No entendí tu comando.");
                 ActivarAnimacionRobot(triste: true);
                 break;
-        }
-    }
-
-    private IEnumerator GenerarCochesConRetraso(int cantidad)
-    {
-        for (int i = 0; i < cantidad; i++)
-        {
-            generadorDeTrafico.GenerarCocheBajoDemanda();
-            yield return new WaitForSeconds(0.75f);
         }
     }
 
@@ -339,7 +419,6 @@ public class GestorIA : MonoBehaviour
     void ActivarAnimacionRobot(bool triste = false)
     {
         if (robotAnimator == null) return;
-
         if (triste)
         {
             robotAnimator.StartTalkingSad();
@@ -355,6 +434,9 @@ public class GestorIA : MonoBehaviour
     {
         if (robotAnimator != null) robotAnimator.StopTalking();
     }
+
+
+
     void OcultarStatusText()
     {
         if (statusText != null && statusText.gameObject.activeSelf)

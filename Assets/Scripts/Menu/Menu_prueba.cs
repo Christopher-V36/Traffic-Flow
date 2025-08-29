@@ -43,7 +43,7 @@ public class MenuManager : MonoBehaviour
 
     public void Jugar()
     {
-        SceneManager.LoadScene("Mapa_2.0");
+        SceneManager.LoadScene("Mapa_3.0");
     }
 
     public void MostrarInformacion()

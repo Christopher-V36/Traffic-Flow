@@ -3,8 +3,6 @@ using System.Collections.Generic;
 
 public class WaypointNode : MonoBehaviour
 {
-    // --- ¡NUEVA SECCIÓN! ---
-    // Creamos un tipo de dato para clasificar nuestros nodos.
     public enum TipoDeNodo
     {
         Normal,
@@ -15,7 +13,12 @@ public class WaypointNode : MonoBehaviour
     [Header("Tipo de Nodo")]
     [Tooltip("Define el rol de este nodo en la simulación.")]
     public TipoDeNodo tipoDeNodo = TipoDeNodo.Normal;
-    // -------------------------
+
+    // --- ¡NUEVA VARIABLE! ---
+    [Header("Identificación de Destino")]
+    [Tooltip("Si este nodo es un 'Destino', asígnale un nombre único (ej: 'Estadio', 'Centro').")]
+    public string nombreDestino = "";
+
 
     [Header("Conexiones")]
     [Tooltip("Arrastra aquí los siguientes nodos a los que se puede ir desde este punto.")]
