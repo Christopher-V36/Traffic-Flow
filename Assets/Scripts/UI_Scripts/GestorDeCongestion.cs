@@ -15,9 +15,18 @@ public class GestorDeCongestion : MonoBehaviour
     public int umbralTraficoLigero = 30;
     public int umbralTraficoMedio = 70;
 
+    // --- ¡NUEVA VARIABLE! ---
+    [Tooltip("Margen para evitar que el nivel de tráfico cambie constantemente. Un valor de 5 significa que para bajar de 'Medio' a 'Ligero', el conteo debe ser menor que (umbral - 5).")]
+    public int margenHisteresis = 5;
+
     private List<MedidorDeFlujo> medidoresDeFlujo = new List<MedidorDeFlujo>();
     private float tiempoParaActualizar = 1.0f;
     private float temporizador;
+
+    // --- ¡NUEVO! Guardamos el estado actual para evitar cambios rápidos ---
+    private enum NivelTrafico { Ligero, Medio, Alto }
+    private NivelTrafico nivelActual = NivelTrafico.Ligero;
+
 
     private void Awake()
     {
@@ -41,47 +50,69 @@ public class GestorDeCongestion : MonoBehaviour
         if (temporizador <= 0f)
         {
             temporizador = tiempoParaActualizar;
-
-            // --- ¡NUEVO! ---
-            // Antes de calcular, le pedimos a cada sensor que actualice su conteo.
             foreach (var medidor in medidoresDeFlujo)
             {
                 medidor.RecontarCoches();
             }
-
-            // Ahora los cálculos usarán los datos más recientes.
             ActualizarRanking();
             ActualizarNivelDeTraficoGlobal();
         }
     }
 
+    // --- ¡FUNCIÓN MODIFICADA CON LÓGICA DE HISTÉRESIS! ---
     void ActualizarNivelDeTraficoGlobal()
     {
-        if (textoNivelDeTraficoGlobal == null || medidoresDeFlujo.Count == 0) return;
-        int totalCochesEnCalles = 0;
-        foreach (var medidor in medidoresDeFlujo)
+        if (textoNivelDeTraficoGlobal == null) return;
+
+        int totalCochesEnCalles = medidoresDeFlujo.Sum(medidor => medidor.ConteoActual);
+
+        // Decidimos si cambiamos de nivel basándonos en el nivel actual y los umbrales + el margen.
+        switch (nivelActual)
         {
-            totalCochesEnCalles += medidor.ConteoActual;
+            case NivelTrafico.Ligero:
+                if (totalCochesEnCalles > umbralTraficoLigero)
+                {
+                    nivelActual = NivelTrafico.Medio;
+                }
+                break;
+            case NivelTrafico.Medio:
+                if (totalCochesEnCalles > umbralTraficoMedio)
+                {
+                    nivelActual = NivelTrafico.Alto;
+                }
+                else if (totalCochesEnCalles < umbralTraficoLigero - margenHisteresis)
+                {
+                    nivelActual = NivelTrafico.Ligero;
+                }
+                break;
+            case NivelTrafico.Alto:
+                if (totalCochesEnCalles < umbralTraficoMedio - margenHisteresis)
+                {
+                    nivelActual = NivelTrafico.Medio;
+                }
+                break;
         }
 
-        string nivelDeTrafico = "";
+        // Actualizamos la UI con el estado actual ya estabilizado.
+        string textoNivel = "";
         Color colorDeTrafico = Color.white;
-        if (totalCochesEnCalles <= umbralTraficoLigero)
+        switch (nivelActual)
         {
-            nivelDeTrafico = "Ligero";
-            colorDeTrafico = Color.green;
+            case NivelTrafico.Ligero:
+                textoNivel = "Ligero";
+                colorDeTrafico = Color.green;
+                break;
+            case NivelTrafico.Medio:
+                textoNivel = "Medio";
+                colorDeTrafico = Color.yellow;
+                break;
+            case NivelTrafico.Alto:
+                textoNivel = "Alto";
+                colorDeTrafico = Color.red;
+                break;
         }
-        else if (totalCochesEnCalles <= umbralTraficoMedio)
-        {
-            nivelDeTrafico = "Medio";
-            colorDeTrafico = Color.yellow;
-        }
-        else
-        {
-            nivelDeTrafico = "Alto";
-            colorDeTrafico = Color.red;
-        }
-        textoNivelDeTraficoGlobal.text = $"<color=#{ColorUtility.ToHtmlStringRGB(colorDeTrafico)}>{nivelDeTrafico}</color>";
+
+        textoNivelDeTraficoGlobal.text = $"<color=#{ColorUtility.ToHtmlStringRGB(colorDeTrafico)}>{textoNivel}</color>";
     }
 
     void ActualizarRanking()

@@ -54,7 +54,12 @@ public class GestorIA : MonoBehaviour
 
     void Start()
     {
-        sendButton.onClick.AddListener(ProcesarComandoDeUsuario);
+        if (sendButton != null)
+        {
+            sendButton.onClick.RemoveAllListeners();
+
+            sendButton.onClick.AddListener(ProcesarComandoDeUsuario);
+        }
         StartCoroutine(PrecargarModelo());
     }
 
