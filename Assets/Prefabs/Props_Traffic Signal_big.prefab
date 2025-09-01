@@ -99,12 +99,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   idSemaforo: 1
   semaforoRenderer: {fileID: 4500787183874793869}
-  colorRojoOn: {r: 1, g: 0, b: 0, a: 1}
-  colorAmarilloOn: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
-  colorVerdeOn: {r: 0, g: 1, b: 0, a: 1}
-  tiempoVerde: 5
-  tiempoAmarillo: 2
-  tiempoRojo: 5
+  materialRojoOn: {fileID: 2100000, guid: 046a27f7f84ab4f4fb78e27f4f01900b, type: 2}
+  materialAmarilloOn: {fileID: 2100000, guid: 1e6d2452f8bf9104e9da1ac76d7aebb8, type: 2}
+  materialVerdeOn: {fileID: 2100000, guid: 3939fa2f412282b41892820cbb536367, type: 2}
+  materialApagado: {fileID: 2100000, guid: 0ea03c6aa98d5224cb797d69c8ef34ca, type: 2}
 --- !u!65 &2708714548192912433
 BoxCollider:
   m_ObjectHideFlags: 0

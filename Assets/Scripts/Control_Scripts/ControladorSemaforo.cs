@@ -5,57 +5,61 @@ public class ControladorSemaforo : MonoBehaviour
     [Header("Identificación")]
     public int idSemaforo = 1;
 
-    [Header("Configuración del Material")]
+    [Header("Configuración del Renderer")]
     public MeshRenderer semaforoRenderer;
 
-    [Header("Colores de Emisión (Luces)")]
-    public Color colorRojoOn = Color.red;
-    public Color colorAmarilloOn = Color.yellow;
-    public Color colorVerdeOn = Color.green;
+    // --- CAMBIO: Ahora son referencias a Materiales, no a Colores ---
+    [Header("Materiales de Emisión (Luces)")]
+    public Material materialRojoOn;
+    public Material materialAmarilloOn;
+    public Material materialVerdeOn;
+    // Opcional: Un material para cuando la luz está apagada
+    public Material materialApagado;
 
     public enum EstadoSemaforo { Verde, Amarillo, Rojo }
     public EstadoSemaforo estadoActual { get; private set; }
 
-    private Material semaforoMaterial;
-
     void Awake()
     {
-        // Usamos Awake para asegurar que el material esté listo inmediatamente.
-        if (semaforoRenderer != null)
+        // Ya no necesitamos manipular el material aquí, lo hacemos directamente.
+        // Nos aseguramos de empezar con un estado conocido (ej: apagado o rojo).
+        if (materialApagado != null)
         {
-            semaforoMaterial = semaforoRenderer.material;
-            semaforoMaterial.EnableKeyword("_EMISSION");
+            semaforoRenderer.material = materialApagado;
+        }
+        else
+        {
+            PonerEnRojo();
         }
     }
 
-    // --- FUNCIONES DE COMANDO PÚBLICAS ---
     public void PonerEnVerde()
     {
         estadoActual = EstadoSemaforo.Verde;
-        CambiarLuz(colorVerdeOn);
+        CambiarLuz(materialVerdeOn);
     }
 
     public void PonerEnAmarillo()
     {
         estadoActual = EstadoSemaforo.Amarillo;
-        CambiarLuz(colorAmarilloOn);
+        CambiarLuz(materialAmarilloOn);
     }
 
     public void PonerEnRojo()
     {
         estadoActual = EstadoSemaforo.Rojo;
-        CambiarLuz(colorRojoOn);
+        CambiarLuz(materialRojoOn);
     }
 
-    private void CambiarLuz(Color colorDeEmision)
+    // --- CAMBIO: La función ahora asigna un material completo ---
+    private void CambiarLuz(Material materialDeLuz)
     {
-        if (semaforoMaterial != null)
+        if (semaforoRenderer != null && materialDeLuz != null)
         {
-            semaforoMaterial.SetColor("_EmissionColor", colorDeEmision);
+            semaforoRenderer.material = materialDeLuz;
         }
     }
 
-    // La función de control por IA ahora simplemente llama a las funciones de comando.
     public void ForzarEstadoDesdeIA(string color)
     {
         switch (color.ToLower())

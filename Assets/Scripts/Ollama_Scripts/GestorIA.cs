@@ -109,34 +109,38 @@ public class GestorIA : MonoBehaviour
         SetUIInteractable(false);
 
         string promptParaIA = $@"
-        Tu rol es ser un controlador de una simulación de tráfico.
-        SIEMPRE debes convertir el siguiente comando a un formato JSON. No respondas con texto libre.
+    Tu rol es ser un controlador de una simulación de tráfico.
+    SIEMPRE debes convertir el siguiente comando a un formato JSON. No respondas con texto libre.
 
-        INSTRUCCIÓN IMPORTANTE: Si el nombre de una calle, intersección o semáforo es un código de letras y números que vienen espaciados (ej: 'H A 2', 'V F 3'), SIEMPRE debes unirlo en una sola palabra sin espacios (ej: 'HA2', 'VF3').
+    INSTRUCCIÓN IMPORTANTE: Si el nombre de una calle, intersección o semáforo es un código de letras y números que vienen espaciados (ej: 'H A 2', 'V F 3'), SIEMPRE debes unirlo en una sola palabra sin espacios (ej: 'HA2', 'VF3').
+    INSTRUCCIÓN DE TRÁFICO: Normaliza los niveles de tráfico. 'bajo' es 'ligero'. 'moderado' es 'medio'. 'pesado' o 'intenso' es 'alto'.
 
-        - Para cambiar el nivel de tráfico, usa la acción 'ajustar_trafico' y el campo 'nivel_trafico' con los valores 'ligero', 'medio', o 'alto'.
-        - Para semáforos, usa 'id_semaforo' (string).
-        - Para abrir/cerrar intersecciones, usa 'id_interseccion' (string).
-        - Para abrir/cerrar calles, usa 'nombre_calle' (string).
-        - Para comandos globales, usa acciones como 'abrir_todas_calles', 'cerrar_todas_intersecciones', etc.
-        - Para que el robot hable, usa la acción 'mostrar_mensaje_robot' y el campo 'mensaje'.
-        - Para comandos no reconocidos, usa la acción 'no_valido'.
+    - Para cambiar el nivel de tráfico, usa la acción 'ajustar_trafico' y el campo 'nivel_trafico' con los valores normalizados ('ligero', 'medio', 'alto').
+    - Para semáforos, usa 'id_semaforo' (string).
+    - Para abrir/cerrar intersecciones, usa 'id_interseccion' (string).
+    - Para abrir/cerrar calles, usa 'nombre_calle' (string).
+    - Para comandos globales, usa acciones como 'abrir_todas_calles', 'cerrar_todas_intersecciones', etc.
+    - Para que el robot hable, usa la acción 'mostrar_mensaje_robot' y el campo 'mensaje'.
+    - Para comandos no reconocidos, usa la acción 'no_valido'.
 
-        Ejemplos:
-        - Usuario: 'cierra la calle H A 2' -> {{""accion"":""cerrar_calle"", ""nombre_calle"":""HA2""}}
-        - Usuario: 'abre la intersección V F 3' -> {{""accion"":""abrir_interseccion"", ""id_interseccion"":""VF3""}}
-        - Usuario: 'abre todas las calles' -> {{""accion"":""abrir_todas_calles""}}
-        - Usuario: 'cierra todas las intersecciones' -> {{""accion"":""cerrar_todas_intersecciones""}}
-        - Usuario: 'semaforo b dos horizontal rojo' -> {{""accion"":""cambiar_grupo_semaforo"", ""id_semaforo"":""B2"", ""grupo"":""B"", ""color"":""rojo""}}
-        - Usuario: 'pon el tráfico en modo ligero' -> {{""accion"":""ajustar_trafico"", ""nivel_trafico"":""ligero""}}
-        - Usuario: 'envía el coche 2 al estadio' -> {{""accion"":""enviar_coche_a_destino"", ""id_coche"":2, ""nombre_destino"":""estadio""}}
-        - Usuario: 'agrega 5 coches' -> {{""accion"":""agregar_coches"", ""cantidad"":5}}
-        - Usuario: 'hola' -> {{""accion"":""mostrar_mensaje_robot"", ""mensaje"":""¡Hola! ¿En qué puedo ayudarte?""}}
-        - Usuario: 'gracias' -> {{""accion"":""mostrar_mensaje_robot"", ""mensaje"":""¡De nada! ¡Estoy a tu disposición!""}}
-        - Usuario: 'por favor, mueve los coches' -> {{""accion"":""no_valido""}}
+    Ejemplos:
+    - Usuario: 'quiero tráfico bajo' -> {{""accion"":""ajustar_trafico"", ""nivel_trafico"":""ligero""}}
+    - Usuario: 'tráfico moderado' -> {{""accion"":""ajustar_trafico"", ""nivel_trafico"":""medio""}}
+    - Usuario: 'pon el tráfico pesado' -> {{""accion"":""ajustar_trafico"", ""nivel_trafico"":""alto""}}
+    - Usuario: 'necesito tráfico intenso' -> {{""accion"":""ajustar_trafico"", ""nivel_trafico"":""alto""}}
+    - Usuario: 'cierra la calle H A 2' -> {{""accion"":""cerrar_calle"", ""nombre_calle"":""HA2""}}
+    - Usuario: 'abre la intersección V F 3' -> {{""accion"":""abrir_interseccion"", ""id_interseccion"":""VF3""}}
+    - Usuario: 'abre todas las calles' -> {{""accion"":""abrir_todas_calles""}}
+    - Usuario: 'cierra todas las intersecciones' -> {{""accion"":""cerrar_todas_intersecciones""}}
+    - Usuario: 'semaforo b dos horizontal rojo' -> {{""accion"":""cambiar_grupo_semaforo"", ""id_semaforo"":""B2"", ""grupo"":""B"", ""color"":""rojo""}}
+    - Usuario: 'envía el coche 2 al estadio' -> {{""accion"":""enviar_coche_a_destino"", ""id_coche"":2, ""nombre_destino"":""estadio""}}
+    - Usuario: 'agrega 5 coches' -> {{""accion"":""agregar_coches"", ""cantidad"":5}}
+    - Usuario: 'hola' -> {{""accion"":""mostrar_mensaje_robot"", ""mensaje"":""¡Hola! ¿En qué puedo ayudarte?""}}
+    - Usuario: 'gracias' -> {{""accion"":""mostrar_mensaje_robot"", ""mensaje"":""¡De nada! ¡Estoy a tu disposición!""}}
+    - Usuario: 'por favor, mueve los coches' -> {{""accion"":""no_valido""}}
 
-        Ahora, convierte este comando:
-        Usuario: '{comandoUsuario}' ->";
+    Ahora, convierte este comando:
+    Usuario: '{comandoUsuario}' ->";
 
         StartCoroutine(EnviarComandoALaIA(promptParaIA));
     }
