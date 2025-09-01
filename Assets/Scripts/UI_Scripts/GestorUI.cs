@@ -1,10 +1,10 @@
 using UnityEngine;
-using TMPro; // No olvides añadir esta línea para usar TextMeshPro
+using TMPro; // No olvides aï¿½adir esta lï¿½nea para usar TextMeshPro
 
 public class GestorUI : MonoBehaviour
 {
     [Header("Elementos de la UI")]
-    [Tooltip("El texto que mostrará el número de coches.")]
+    [Tooltip("El texto que mostrarï¿½ el nï¿½mero de coches.")]
     public TextMeshProUGUI textoContadorCoches;
 
     // Update se llama una vez por frame
