@@ -25,8 +25,7 @@ public class ControladorCocheHibrido : MonoBehaviour
 
     private bool estabaDetenidoAnteriormente = false;
 
-    // --- ¡NUEVO MECANISMO DE SEGURIDAD! ---
-    private Coroutine vigilanteDeAtasco; // Referencia a nuestra corrutina "vigilante"
+    private Coroutine vigilanteDeAtasco;
 
     void Awake()
     {
@@ -49,7 +48,6 @@ public class ControladorCocheHibrido : MonoBehaviour
             agente.isStopped = true;
             estabaDetenidoAnteriormente = true;
 
-            // Si nos detenemos, cancelamos cualquier vigilancia, ya que es una detención legítima.
             if (vigilanteDeAtasco != null)
             {
                 StopCoroutine(vigilanteDeAtasco);
@@ -65,14 +63,11 @@ public class ControladorCocheHibrido : MonoBehaviour
                 agente.SetDestination(objetivoActual.transform.position);
                 estabaDetenidoAnteriormente = false;
 
-                // --- ¡AQUÍ EMPIEZA LA VIGILANCIA! ---
-                // Al darle la orden de moverse, iniciamos el vigilante.
                 if (vigilanteDeAtasco != null) StopCoroutine(vigilanteDeAtasco);
                 vigilanteDeAtasco = StartCoroutine(VigilarSiEstaAtascado());
             }
             else if (!agente.pathPending && agente.remainingDistance <= distanciaMinimaAlNodo)
             {
-                // Si llegamos a un nodo, ya no estamos atascados, así que cancelamos la vigilancia.
                 if (vigilanteDeAtasco != null)
                 {
                     StopCoroutine(vigilanteDeAtasco);
@@ -85,32 +80,21 @@ public class ControladorCocheHibrido : MonoBehaviour
         }
     }
 
-    // --- ¡NUEVA CORRUTINA VIGILANTE! ---
-    // Esta corrutina revisa si el coche realmente empezó a moverse después de recibir la orden.
     private IEnumerator VigilarSiEstaAtascado()
     {
         // Espera 1.5 segundos para darle tiempo al coche de acelerar.
         yield return new WaitForSeconds(1.5f);
 
-        // Después de la espera, revisamos dos cosas:
-        // 1. ¿El coche sigue sin moverse (su velocidad es casi cero)?
-        // 2. ¿No hay una razón legítima para que esté parado (un semáforo o un obstáculo)?
         if (agente.velocity.sqrMagnitude < 0.01f && !semaforoEnRojo && !obstaculoAdelante)
         {
             Debug.LogWarning($"¡FALLO DETECTADO! Coche {idCoche} atascado. Forzando avance al siguiente nodo.");
 
-            // Si ambas condiciones son ciertas, el coche está atascado.
-            // Forzamos el avance saltando al siguiente nodo de la ruta.
             indiceRutaActual++;
             MoverAlSiguienteNodoDeLaRuta(false);
         }
-
-        // La vigilancia ha terminado.
         vigilanteDeAtasco = null;
     }
 
-
-    // --- El resto de tus funciones permanecen igual ---
 
     public void IniciarViaje(WaypointNode nodoInicial, WaypointNode nodoFinal, int id)
     {

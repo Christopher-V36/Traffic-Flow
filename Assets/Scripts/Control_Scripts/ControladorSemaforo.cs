@@ -8,12 +8,10 @@ public class ControladorSemaforo : MonoBehaviour
     [Header("Configuración del Renderer")]
     public MeshRenderer semaforoRenderer;
 
-    // --- CAMBIO: Ahora son referencias a Materiales, no a Colores ---
     [Header("Materiales de Emisión (Luces)")]
     public Material materialRojoOn;
     public Material materialAmarilloOn;
     public Material materialVerdeOn;
-    // Opcional: Un material para cuando la luz está apagada
     public Material materialApagado;
 
     public enum EstadoSemaforo { Verde, Amarillo, Rojo }
@@ -21,8 +19,6 @@ public class ControladorSemaforo : MonoBehaviour
 
     void Awake()
     {
-        // Ya no necesitamos manipular el material aquí, lo hacemos directamente.
-        // Nos aseguramos de empezar con un estado conocido (ej: apagado o rojo).
         if (materialApagado != null)
         {
             semaforoRenderer.material = materialApagado;
@@ -51,7 +47,6 @@ public class ControladorSemaforo : MonoBehaviour
         CambiarLuz(materialRojoOn);
     }
 
-    // --- CAMBIO: La función ahora asigna un material completo ---
     private void CambiarLuz(Material materialDeLuz)
     {
         if (semaforoRenderer != null && materialDeLuz != null)
